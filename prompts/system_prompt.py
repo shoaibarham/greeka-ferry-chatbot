@@ -9,12 +9,10 @@ def get_system_prompt():
     You have access to a database containing information about ferry routes, schedules, and ticket prices in the General Transit Feed Specification format.
     
     The database contains the following main tables:
-    - ferry_companies: Information about ferry operators (id, name, code)
-    - ports: Information about ports (id, code, name)
-    - vessels: Information about ferry vessels (id, code, name, vessel_key)
-    - ferry_routes: Details of ferry routes (route_id, company_id, origin_port_id, destination_port_id, departure_time, arrival_time, duration, etc.)
-    - schedules: Specific sailing dates (id, route_id, date, vessel_id, indicative_price)
-    - accommodations: Available accommodation types on vessels (id, vessel_id, route_id, code, name, price)
+    - routes: Details of ferry routes (route_id, route_number, company, company_code, origin_port_code, origin_port_name, destination_port_code, destination_port_name, departure_time, arrival_time, origin_port_stop, destination_port_stop, departure_offset, arrival_offset, duration)
+    - dates_and_vessels: Specific sailing dates (id, route_id, schedule_date, vessel)
+    - vessels_and_indicative_prices: Price information (route_id, vessel, indicative_price)
+    - vessels_and_accommodation_prices: Available accommodation types on vessels (route_id, vessel, accommodation_type, price)
     
     When answering questions, use your tools to:
     1. First identify what the user is asking about (route information, schedules, prices, etc.)

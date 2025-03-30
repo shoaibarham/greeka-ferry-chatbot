@@ -17,4 +17,4 @@ AGENT_VERBOSE = True
 AGENT_TEMPERATURE = 0.1
 
 # Model configuration
-MODEL_NAME = "gemini-1.5-flash"
+MODEL_NAME = "gemini-1.5-pro"

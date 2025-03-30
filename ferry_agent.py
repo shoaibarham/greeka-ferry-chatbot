@@ -37,12 +37,10 @@ class FerryAgent:
         self.llm = ChatGoogleGenerativeAI(
             model=MODEL_NAME,
             temperature=AGENT_TEMPERATURE,
-            max_tokens=None,
-            timeout=None,
-            max_retries=2,
-            google_api_key=self.api_key,
-            # Don't use deprecated parameter
-            # convert_system_message_to_human=True
+            max_output_tokens=2048,  # Set a specific max token limit
+            timeout=60,  # Set a specific timeout
+            max_retries=3,
+            google_api_key=self.api_key
         )
 
         # Define the main database query tool
@@ -167,32 +165,50 @@ class FerryAgent:
         Returns:
             Agent's response
         """
+        logger.info(f"Received query: '{input_text}' for session_id: {session_id}")
+        
         # Check for empty input and return a helpful message
         if not input_text or input_text.strip() == "":
+            logger.info("Empty query received, returning default message")
             return "I'm here to help with ferry information. Please ask me a question about Greek ferry routes, schedules, or prices."
             
         # Initialize chat history for the session if it doesn't exist
         if session_id not in self.chat_histories:
+            logger.info(f"Initializing new chat history for session: {session_id}")
             self.chat_histories[session_id] = []
 
         session_history = self.chat_histories[session_id]
+        logger.info(f"Current history length: {len(session_history)}")
 
         try:
+            logger.info("Invoking agent executor")
             # Invoke the agent executor with the input and chat history
             result = self.agent_executor.invoke({
                 "input": input_text,
                 "chat_history": session_history
             })
-
-            # Update the chat history with the user's input and agent's response
-            session_history.append(HumanMessage(content=input_text))
-            session_history.append(AIMessage(content=result['output']))
-
-            logger.info("Agent response generated successfully")
-            return result['output']
+            
+            logger.info(f"Agent result type: {type(result)}")
+            logger.info(f"Agent result keys: {result.keys() if isinstance(result, dict) else 'Not a dict'}")
+            
+            if isinstance(result, dict) and 'output' in result:
+                output = result['output']
+                logger.info(f"Agent response length: {len(output) if output else 0}")
+                
+                # Update the chat history with the user's input and agent's response
+                session_history.append(HumanMessage(content=input_text))
+                session_history.append(AIMessage(content=output))
+                
+                logger.info("Agent response generated successfully")
+                return output
+            else:
+                logger.error(f"Invalid response format: {result}")
+                return "The system responded in an unexpected format. Please try again with a different question."
             
         except Exception as e:
+            import traceback
             logger.error(f"Error processing query: {str(e)}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
             return "I'm sorry, I encountered an error while processing your request. Please try asking your question in a different way or try another query about ferry routes or schedules."
 
     def get_db_schema(self) -> str:
