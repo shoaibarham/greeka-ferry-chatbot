@@ -1,297 +1,392 @@
-{% extends "base.html" %}
-
-{% block title %}Admin Panel - Greek Ferry Information System{% endblock %}
-
-{% block content %}
-<div class="row">
-  <div class="col-md-12">
-    <div class="card shadow mb-4">
-      <div class="card-header bg-danger text-white">
-        <h4 class="mb-0">Admin Panel</h4>
-      </div>
-      <div class="card-body">
-        <div class="row">
-          <div class="col-md-6">
-            <div class="card mb-4 bg-light">
-              <div class="card-header">
-                <h5 class="mb-0">Database Status</h5>
-              </div>
-              <div class="card-body">
-                <div class="d-flex justify-content-between mb-3">
-                  <div class="loader spinner-border spinner-border-sm text-primary" role="status" id="db-status-loader">
-                    <span class="visually-hidden">Loading...</span>
-                  </div>
-                  <span id="db-status-badge" class="badge bg-secondary">Checking...</span>
-                </div>
-                <div id="database-info">
-                  <p>Checking database status...</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-6">
-            <div class="card mb-4">
-              <div class="card-header">
-                <h5 class="mb-0">Data Management</h5>
-              </div>
-              <div class="card-body">
-                <p>Update data from external sources to ensure the most current information.</p>
-                <div class="mb-3">
-                  <button type="button" class="btn btn-primary" id="update-main-data-btn">
-                    Update Ferry Data
-                  </button>
-                  <div class="spinner-border spinner-border-sm text-primary d-none" role="status" id="main-update-loader">
-                    <span class="visually-hidden">Loading...</span>
-                  </div>
-                </div>
-                <div class="mb-3">
-                  <button type="button" class="btn btn-info" id="update-historical-data-btn">
-                    Update Historical Data
-                  </button>
-                  <div class="spinner-border spinner-border-sm text-info d-none" role="status" id="historical-update-loader">
-                    <span class="visually-hidden">Loading...</span>
-                  </div>
-                </div>
-                <div class="alert alert-info d-none" id="update-result">
-                  Update status will appear here.
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="row">
-          <div class="col-md-12">
-            <div class="card mb-4">
-              <div class="card-header">
-                <h5 class="mb-0">Agent Testing</h5>
-              </div>
-              <div class="card-body">
-                <p>Test the ferry agent with specific queries to verify functionality.</p>
-                <div class="mb-3">
-                  <label for="test-query" class="form-label">Test Query</label>
-                  <div class="input-group">
-                    <input type="text" class="form-control" id="test-query" placeholder="Enter a test query...">
-                    <button class="btn btn-primary" type="button" id="run-test-btn">Test</button>
-                  </div>
-                </div>
-                <div class="mb-3">
-                  <label for="test-result" class="form-label">Result</label>
-                  <div class="card bg-light">
-                    <div class="card-body">
-                      <pre id="test-result" class="mb-0">Results will appear here...</pre>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ferry Data Admin - Greek Ferry Chatbot</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    
+    <!-- Roboto font -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container mt-4 mb-4">
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h2 class="mb-0"><i class="fas fa-cogs me-2"></i> Greek Ferry Data Administration</h2>
+                            <a href="/" class="btn btn-light btn-sm">
+                                <i class="fas fa-arrow-left me-2"></i> Back to Chatbot
+                            </a>
+                        </div>
                     </div>
-                  </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i> This admin panel shows the current status of the ferry database and allows you to trigger data updates.
+                        </div>
+                    </div>
                 </div>
-              </div>
             </div>
-          </div>
         </div>
-      </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <h4 class="mb-0"><i class="fas fa-database me-2"></i> Database Status</h4>
+                    </div>
+                    <div class="card-body" id="database-status">
+                        <div class="d-flex justify-content-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <h4 class="mb-0"><i class="fas fa-clock-rotate-left me-2"></i> Historical Database</h4>
+                    </div>
+                    <div class="card-body" id="historical-database-status">
+                        <div class="d-flex justify-content-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <h4 class="mb-0"><i class="fas fa-history me-2"></i> Update History</h4>
+                    </div>
+                    <div class="card-body">
+                        <p id="last-update">Checking update history...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <h4 class="mb-0"><i class="fas fa-sync-alt me-2"></i> Manual Data Update</h4>
+                    </div>
+                    <div class="card-body">
+                        <ul class="nav nav-tabs" id="updateTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="main-tab" data-bs-toggle="tab" data-bs-target="#main-update" type="button" role="tab" aria-controls="main-update" aria-selected="true">Main Database</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="historical-tab" data-bs-toggle="tab" data-bs-target="#historical-update" type="button" role="tab" aria-controls="historical-update" aria-selected="false">Historical Database</button>
+                            </li>
+                        </ul>
+                        
+                        <div class="tab-content mt-3" id="updateTabsContent">
+                            <!-- Main Database Update Tab -->
+                            <div class="tab-pane fade show active" id="main-update" role="tabpanel" aria-labelledby="main-tab">
+                                <p>Trigger a manual update of the current ferry data from the source file.</p>
+                                
+                                <form id="update-form">
+                                    <div class="mb-3">
+                                        <label for="source-file" class="form-label">Source File</label>
+                                        <input type="text" class="form-control" id="source-file" value="attached_assets/GTFS_data_v5.json">
+                                        <div class="form-text">Path to the main data file to use for the update.</div>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-sync-alt me-2"></i> Update Main Database
+                                    </button>
+                                </form>
+                                
+                                <div id="update-result" class="alert mt-3 d-none"></div>
+                            </div>
+                            
+                            <!-- Historical Database Update Tab -->
+                            <div class="tab-pane fade" id="historical-update" role="tabpanel" aria-labelledby="historical-tab">
+                                <p>Trigger a manual update of the historical ferry route data from the source file.</p>
+                                
+                                <form id="historical-update-form">
+                                    <div class="mb-3">
+                                        <label for="historical-source-file" class="form-label">Historical Data Source File</label>
+                                        <input type="text" class="form-control" id="historical-source-file" value="attached_assets/GTFS appear dates.json">
+                                        <div class="form-text">Path to the historical data file to use for the update.</div>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-clock-rotate-left me-2"></i> Update Historical Database
+                                    </button>
+                                </form>
+                                
+                                <div id="historical-update-result" class="alert mt-3 d-none"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <h4 class="mb-0"><i class="fas fa-clock me-2"></i> Scheduled Updates</h4>
+                    </div>
+                    <div class="card-body">
+                        <p>Ferry data is automatically updated every day at 3:00 AM to ensure the information is always current.</p>
+                        
+                        <div class="alert alert-secondary">
+                            <h5><i class="fas fa-info-circle me-2"></i> Next Scheduled Update:</h5>
+                            <p id="next-update">Calculating...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
-</div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  // Check database status on page load
-  checkDatabaseStatus();
-  
-  // Set up event listeners
-  document.getElementById('update-main-data-btn').addEventListener('click', updateMainData);
-  document.getElementById('update-historical-data-btn').addEventListener('click', updateHistoricalData);
-  document.getElementById('run-test-btn').addEventListener('click', runTestQuery);
-  
-  // Function to check database status
-  function checkDatabaseStatus() {
-    const statusLoader = document.getElementById('db-status-loader');
-    const statusBadge = document.getElementById('db-status-badge');
-    const databaseInfo = document.getElementById('database-info');
     
-    statusLoader.classList.remove('d-none');
-    statusBadge.innerText = 'Checking...';
-    statusBadge.className = 'badge bg-secondary';
-    
-    fetch('/api/database-status')
-      .then(response => response.json())
-      .then(data => {
-        statusLoader.classList.add('d-none');
+    <!-- JavaScript -->
+    <script>
+        // Get database status on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchDatabaseStatus();
+            calculateNextUpdate();
+        });
         
-        if (data.status === 'online') {
-          statusBadge.innerText = 'Online';
-          statusBadge.className = 'badge bg-success';
-          
-          // Display database information
-          let html = '<h6>Main Database</h6>';
-          html += '<ul class="list-group mb-3">';
-          for (const [table, count] of Object.entries(data.table_counts)) {
-            html += `<li class="list-group-item d-flex justify-content-between align-items-center">
-                      ${table}
-                      <span class="badge bg-primary rounded-pill">${count}</span>
-                    </li>`;
-          }
-          html += '</ul>';
-          
-          html += '<h6>Historical Database</h6>';
-          html += '<ul class="list-group mb-3">';
-          for (const [table, count] of Object.entries(data.historical_counts)) {
-            html += `<li class="list-group-item d-flex justify-content-between align-items-center">
-                      ${table}
-                      <span class="badge bg-primary rounded-pill">${count}</span>
-                    </li>`;
-          }
-          html += '</ul>';
-          
-          if (data.last_update) {
-            html += `<p class="text-info">Last updated: ${data.last_update}</p>`;
-          }
-          
-          databaseInfo.innerHTML = html;
-        } else {
-          statusBadge.innerText = 'Error';
-          statusBadge.className = 'badge bg-danger';
-          databaseInfo.innerHTML = `<div class="alert alert-danger">Error: ${data.error || 'Unknown error'}</div>`;
+        // Fetch database status
+        async function fetchDatabaseStatus() {
+            try {
+                const response = await fetch('/api/database-status');
+                const data = await response.json();
+                
+                if (data.status === 'online') {
+                    // Display main database table counts
+                    const statusHtml = `
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Table</th>
+                                        <th>Record Count</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${Object.entries(data.table_counts).map(([table, count]) => `
+                                        <tr>
+                                            <td>${formatTableName(table)}</td>
+                                            <td>${count.toLocaleString()}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                    
+                    document.getElementById('database-status').innerHTML = statusHtml;
+                    
+                    // Display historical database counts
+                    if (data.historical_counts) {
+                        const historicalHtml = `
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Table</th>
+                                            <th>Record Count</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${Object.entries(data.historical_counts).map(([table, count]) => `
+                                            <tr>
+                                                <td>${formatTableName(table)}</td>
+                                                <td>${count.toLocaleString()}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p class="text-muted mt-2">
+                                <i class="fas fa-info-circle"></i> Historical data is used when current routes aren't found to show when they were previously available or are scheduled for the future.
+                            </p>
+                        `;
+                        
+                        document.getElementById('historical-database-status').innerHTML = historicalHtml;
+                    } else {
+                        document.getElementById('historical-database-status').innerHTML = `
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i> No historical database information available.
+                            </div>
+                        `;
+                    }
+                    
+                    // Update last update info
+                    if (data.last_update) {
+                        document.getElementById('last-update').textContent = `Last update: ${data.last_update}`;
+                    } else {
+                        document.getElementById('last-update').textContent = 'No update history found.';
+                    }
+                } else {
+                    document.getElementById('database-status').innerHTML = `
+                        <div class="alert alert-danger">
+                            Database status: Error<br>
+                            ${data.error || 'Unknown error'}
+                        </div>
+                    `;
+                    
+                    document.getElementById('historical-database-status').innerHTML = `
+                        <div class="alert alert-danger">
+                            Database status: Error<br>
+                            ${data.error || 'Unknown error'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('database-status').innerHTML = `
+                    <div class="alert alert-danger">
+                        Failed to fetch database status: ${error.message}
+                    </div>
+                `;
+                
+                document.getElementById('historical-database-status').innerHTML = `
+                    <div class="alert alert-danger">
+                        Failed to fetch database status: ${error.message}
+                    </div>
+                `;
+            }
         }
-      })
-      .catch(error => {
-        statusLoader.classList.add('d-none');
-        statusBadge.innerText = 'Error';
-        statusBadge.className = 'badge bg-danger';
-        databaseInfo.innerHTML = `<div class="alert alert-danger">Failed to check database status: ${error.message}</div>`;
-      });
-  }
-  
-  // Function to update main ferry data
-  function updateMainData() {
-    const updateBtn = document.getElementById('update-main-data-btn');
-    const loader = document.getElementById('main-update-loader');
-    const resultAlert = document.getElementById('update-result');
-    
-    // Disable button and show loader
-    updateBtn.disabled = true;
-    loader.classList.remove('d-none');
-    resultAlert.classList.add('d-none');
-    
-    fetch('/api/update_data', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({})
-    })
-      .then(response => response.json())
-      .then(data => {
-        updateBtn.disabled = false;
-        loader.classList.add('d-none');
-        resultAlert.classList.remove('d-none');
         
-        if (data.success) {
-          resultAlert.className = 'alert alert-success';
-          resultAlert.innerText = `Success: ${data.message}`;
-          
-          // Refresh database status
-          setTimeout(checkDatabaseStatus, 1000);
-        } else {
-          resultAlert.className = 'alert alert-danger';
-          resultAlert.innerText = `Error: ${data.error || 'Unknown error'}`;
+        // Format table name
+        function formatTableName(tableName) {
+            return tableName
+                .split('_')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
         }
-      })
-      .catch(error => {
-        updateBtn.disabled = false;
-        loader.classList.add('d-none');
-        resultAlert.classList.remove('d-none');
-        resultAlert.className = 'alert alert-danger';
-        resultAlert.innerText = `Error: ${error.message}`;
-      });
-  }
-  
-  // Function to update historical ferry data
-  function updateHistoricalData() {
-    const updateBtn = document.getElementById('update-historical-data-btn');
-    const loader = document.getElementById('historical-update-loader');
-    const resultAlert = document.getElementById('update-result');
-    
-    // Disable button and show loader
-    updateBtn.disabled = true;
-    loader.classList.remove('d-none');
-    resultAlert.classList.add('d-none');
-    
-    fetch('/api/update_historical_data', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({})
-    })
-      .then(response => response.json())
-      .then(data => {
-        updateBtn.disabled = false;
-        loader.classList.add('d-none');
-        resultAlert.classList.remove('d-none');
         
-        if (data.success) {
-          resultAlert.className = 'alert alert-success';
-          resultAlert.innerText = `Success: ${data.message}`;
-          
-          // Refresh database status
-          setTimeout(checkDatabaseStatus, 1000);
-        } else {
-          resultAlert.className = 'alert alert-danger';
-          resultAlert.innerText = `Error: ${data.error || 'Unknown error'}`;
+        // Calculate next update time
+        function calculateNextUpdate() {
+            const now = new Date();
+            const nextUpdate = new Date();
+            
+            // Set to 3 AM
+            nextUpdate.setHours(3, 0, 0, 0);
+            
+            // If it's already past 3 AM, set to tomorrow
+            if (now > nextUpdate) {
+                nextUpdate.setDate(nextUpdate.getDate() + 1);
+            }
+            
+            // Calculate time difference
+            const diffMs = nextUpdate - now;
+            const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            
+            document.getElementById('next-update').textContent = `
+                ${nextUpdate.toLocaleString()} (in ${diffHrs} hours and ${diffMins} minutes)
+            `;
         }
-      })
-      .catch(error => {
-        updateBtn.disabled = false;
-        loader.classList.add('d-none');
-        resultAlert.classList.remove('d-none');
-        resultAlert.className = 'alert alert-danger';
-        resultAlert.innerText = `Error: ${error.message}`;
-      });
-  }
-  
-  // Function to run a test query
-  function runTestQuery() {
-    const queryInput = document.getElementById('test-query');
-    const testResult = document.getElementById('test-result');
-    const runButton = document.getElementById('run-test-btn');
-    
-    const query = queryInput.value.trim();
-    if (!query) {
-      testResult.innerText = 'Please enter a query to test.';
-      return;
-    }
-    
-    // Disable button and show loading
-    runButton.disabled = true;
-    testResult.innerText = 'Processing query...';
-    
-    fetch('/api/chat', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        message: query,
-        conversation_id: 'admin_test'
-      })
-    })
-      .then(response => response.json())
-      .then(data => {
-        runButton.disabled = false;
         
-        if (data.error) {
-          testResult.innerText = `Error: ${data.error}\n${data.details || ''}`;
-        } else {
-          testResult.innerText = data.response;
-        }
-      })
-      .catch(error => {
-        runButton.disabled = false;
-        testResult.innerText = `Error: ${error.message}`;
-      });
-  }
-});
-</script>
-{% endblock %}
+        // Handle main database update form submission
+        document.getElementById('update-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            
+            const sourceFile = document.getElementById('source-file').value;
+            const updateResult = document.getElementById('update-result');
+            
+            updateResult.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <div class="spinner-border text-primary me-2" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <span>Updating main database... This may take a few minutes.</span>
+                </div>
+            `;
+            updateResult.classList.remove('d-none', 'alert-success', 'alert-danger');
+            updateResult.classList.add('alert-info');
+            
+            try {
+                const response = await fetch('/api/update_data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ source_file: sourceFile })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateResult.textContent = data.message;
+                    updateResult.classList.remove('alert-info', 'alert-danger');
+                    updateResult.classList.add('alert-success');
+                    
+                    // Refresh database status
+                    fetchDatabaseStatus();
+                } else {
+                    updateResult.textContent = `Error: ${data.error} - ${data.details}`;
+                    updateResult.classList.remove('alert-info', 'alert-success');
+                    updateResult.classList.add('alert-danger');
+                }
+            } catch (error) {
+                updateResult.textContent = `Failed to update database: ${error.message}`;
+                updateResult.classList.remove('alert-info', 'alert-success');
+                updateResult.classList.add('alert-danger');
+            }
+        });
+        
+        // Handle historical database update form submission
+        document.getElementById('historical-update-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            
+            const sourceFile = document.getElementById('historical-source-file').value;
+            const updateResult = document.getElementById('historical-update-result');
+            
+            updateResult.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <div class="spinner-border text-primary me-2" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <span>Updating historical database... This may take a few minutes.</span>
+                </div>
+            `;
+            updateResult.classList.remove('d-none', 'alert-success', 'alert-danger');
+            updateResult.classList.add('alert-info');
+            
+            try {
+                const response = await fetch('/api/update_historical_data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ source_file: sourceFile })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateResult.textContent = data.message;
+                    updateResult.classList.remove('alert-info', 'alert-danger');
+                    updateResult.classList.add('alert-success');
+                    
+                    // Refresh database status
+                    fetchDatabaseStatus();
+                } else {
+                    updateResult.textContent = `Error: ${data.error} - ${data.details}`;
+                    updateResult.classList.remove('alert-info', 'alert-success');
+                    updateResult.classList.add('alert-danger');
+                }
+            } catch (error) {
+                updateResult.textContent = `Failed to update historical database: ${error.message}`;
+                updateResult.classList.remove('alert-info', 'alert-success');
+                updateResult.classList.add('alert-danger');
+            }
+        });
+    </script>
+</body>
+</html>

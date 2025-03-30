@@ -17,6 +17,4 @@ dependencies = [
     "sqlalchemy>=2.0.40",
     "langchain-core>=0.3.49",
     "requests>=2.32.3",
-    "flask-login>=0.6.3",
-    "werkzeug>=3.1.3",
 ]

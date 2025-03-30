@@ -6,9 +6,7 @@ import subprocess
 import threading
 import time
 
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
-from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from werkzeug.security import generate_password_hash
+from flask import Flask, render_template, request, jsonify, session
 
 # Initialize logging
 logging.basicConfig(level=logging.DEBUG)
@@ -17,19 +15,6 @@ logger = logging.getLogger(__name__)
 # Create Flask app
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key")
-
-# Configure SQLAlchemy
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///ferry_system.db")
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-    "pool_recycle": 300,
-    "pool_pre_ping": True,
-}
-
-# Initialize Flask-Login
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
 
 # Database paths
 DB_PATH = 'gtfs.db'
@@ -77,159 +62,19 @@ def initialize_agent():
             logger.error(f"Failed to initialize ferry agent: {str(e)}")
             raise
 
-# Set up the database
-from flask_sqlalchemy import SQLAlchemy
-db = SQLAlchemy(app)
-
-# Initialize the database tables (after SQLAlchemy is set up)
-with app.app_context():
-    from models import User, FerryCompany, Port, Vessel, Accommodation, FerryRoute, Schedule
-    db.create_all()
-
-# User loader for Flask-Login
-@login_manager.user_loader
-def load_user(user_id):
-    """Load a user from the database by ID."""
-    from models import User
-    try:
-        return User.query.get(int(user_id))
-    except Exception as e:
-        logger.error(f"Error loading user: {str(e)}")
-        return None
-
-# Create admin user if it doesn't exist
-def create_admin_user():
-    """Create an admin user if one doesn't exist."""
-    from models import User
-    
-    try:
-        # Check if any admin users exist
-        admin_exists = User.query.filter_by(is_admin=True).first() is not None
-        
-        if not admin_exists:
-            # Create default admin user
-            admin = User(
-                username="admin",
-                email="admin@ferrysystem.com",
-                is_admin=True
-            )
-            admin.set_password("ferry_admin_2025")  # Default password, should be changed
-            
-            db.session.add(admin)
-            db.session.commit()
-            
-            logger.info("Created default admin user")
-    except Exception as e:
-        logger.error(f"Error creating admin user: {str(e)}")
-
-# Initialize the default admin user
-create_admin_user()
-
 # Initialize the ferry agent at app startup
 initialize_agent()
 
 # Routes
 @app.route("/")
 def index():
-    """Render the home page with navigation options."""
-    return render_template("home.html")
-
-@app.route("/ferry-chat")
-def ferry_chat():
     """Render the main page of the ferry chatbot application."""
     return render_template("index.html")
 
 @app.route("/admin")
-@login_required
 def admin():
     """Render the admin panel for managing ferry data."""
-    if not current_user.is_admin:
-        flash("Admin privileges required to access this page.", "danger")
-        return redirect(url_for("index"))
     return render_template("admin.html")
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    """Handle user login."""
-    if current_user.is_authenticated:
-        return redirect(url_for("index"))
-        
-    if request.method == "POST":
-        from models import User
-        
-        username = request.form.get("username")
-        password = request.form.get("password")
-        
-        user = db.session.query(User).filter_by(username=username).first()
-        
-        if user and user.check_password(password):
-            login_user(user)
-            flash("Logged in successfully.", "success")
-            
-            # Redirect to the page the user was trying to access
-            next_page = request.args.get("next")
-            if not next_page or next_page.startswith('/'):
-                next_page = url_for("index")
-            return redirect(next_page)
-        else:
-            flash("Invalid username or password. Please try again.", "danger")
-    
-    return render_template("login.html")
-    
-@app.route("/logout")
-@login_required
-def logout():
-    """Handle user logout."""
-    logout_user()
-    flash("You have been logged out successfully.", "success")
-    return redirect(url_for("index"))
-    
-@app.route("/register", methods=["GET", "POST"])
-def register():
-    """Handle user registration."""
-    if current_user.is_authenticated:
-        return redirect(url_for("index"))
-        
-    if request.method == "POST":
-        from models import User
-        
-        username = request.form.get("username")
-        email = request.form.get("email")
-        password = request.form.get("password")
-        password_confirm = request.form.get("password_confirm")
-        
-        # Validate inputs
-        error = None
-        if not username:
-            error = "Username is required."
-        elif not email:
-            error = "Email address is required."
-        elif not password:
-            error = "Password is required."
-        elif password != password_confirm:
-            error = "Passwords do not match."
-        elif db.session.query(User).filter_by(username=username).first() is not None:
-            error = f"Username {username} is already taken."
-        elif db.session.query(User).filter_by(email=email).first() is not None:
-            error = f"Email {email} is already registered."
-            
-        if error is None:
-            # Create new user
-            new_user = User(
-                username=username,
-                email=email
-            )
-            new_user.set_password(password)
-            
-            db.session.add(new_user)
-            db.session.commit()
-            
-            flash("Your account has been created successfully! You can now log in.", "success")
-            return redirect(url_for("login"))
-        else:
-            flash(error, "danger")
-    
-    return render_template("register.html")
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
