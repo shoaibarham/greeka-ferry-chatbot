@@ -29,42 +29,20 @@ class FerryAgent:
         
         # Raise an error if the API key is not set
         if not self.api_key:
-            logger.error("GEMINI_API_KEY is not set in the environment variables")
-            raise RuntimeError("API key not set. Please ensure that GEMINI_API_KEY is set in the environment variables.")
-            
-        # Log API key characteristics for debugging (safely)
-        logger.info(f"API Key present, length: {len(self.api_key)}, prefix: {self.api_key[:4] if len(self.api_key) > 4 else 'too short'}")
+            raise ValueError("GEMINI_API_KEY is not set in the environment variables.")
 
         # Initialize chat histories for each session
         self.chat_histories: Dict[str, List[Union[HumanMessage, AIMessage, SystemMessage]]] = {}
 
-        try:
-            # Initialize the language model
-            self.llm = ChatGoogleGenerativeAI(
-                model=MODEL_NAME,
-                temperature=AGENT_TEMPERATURE,
-                max_output_tokens=2048,  # Set a specific max token limit
-                timeout=60,  # Set a specific timeout
-                max_retries=3,
-                google_api_key=self.api_key
-            )
-            logger.info(f"Successfully initialized ChatGoogleGenerativeAI with model: {MODEL_NAME}")
-        except Exception as e:
-            logger.error(f"Failed to initialize ChatGoogleGenerativeAI: {str(e)}")
-            import traceback
-            logger.error(f"Detailed error: {traceback.format_exc()}")
-            raise RuntimeError(f"Could not initialize Gemini API: {str(e)}")
-            
-        # Test the model with a simple query to verify it's working
-        try:
-            logger.info("Testing Gemini model with a simple query...")
-            test_response = self.llm.invoke("Hello")
-            logger.info(f"Test passed - received response of length: {len(str(test_response))}")
-        except Exception as e:
-            logger.error(f"Test query failed: {str(e)}")
-            import traceback
-            logger.error(f"Detailed test query error: {traceback.format_exc()}")
-            raise RuntimeError(f"API key validation failed: {str(e)}")
+        # Initialize the language model
+        self.llm = ChatGoogleGenerativeAI(
+            model=MODEL_NAME,
+            temperature=AGENT_TEMPERATURE,
+            max_output_tokens=2048,  # Set a specific max token limit
+            timeout=60,  # Set a specific timeout
+            max_retries=3,
+            google_api_key=self.api_key
+        )
 
         # Define the main database query tool
         self.db_query_tool = Tool(

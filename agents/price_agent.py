@@ -40,19 +40,11 @@ class PriceAgent:
         """
         Initialize the PriceAgent with specialized price comparison capabilities.
         """
-        try:
-            # Configure the Gemini model
-            genai.configure(api_key=API_KEY)
-            
-            # Set up the LLM with a timeout
-            self.llm = ChatGoogleGenerativeAI(
-                model="gemini-1.5-pro",
-                timeout=30.0,  # 30 seconds timeout
-                max_retries=2
-            )
-        except Exception as e:
-            logger.error(f"Failed to initialize Gemini LLM: {str(e)}")
-            raise RuntimeError(f"Could not initialize Gemini API: {str(e)}")
+        # Configure the Gemini model
+        genai.configure(api_key=API_KEY)
+        
+        # Set up the LLM
+        self.llm = ChatGoogleGenerativeAI(model="gemini-1.5-pro")
         
         # Session conversations
         self.conversations = {}
