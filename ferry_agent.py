@@ -328,37 +328,7 @@ class FerryAgent:
                     dict_str = str(param1)
                     logger.error(f"Failed to extract ports from complex dictionary: {dict_str}")
         
-        # Case 2: First parameter is a string that looks like JSON
-        elif isinstance(param1, str) and (param1.startswith('{') and param1.endswith('}')):
-            logger.info(f"Processing potential JSON string: {param1}")
-            
-            try:
-                # Try to parse it as JSON
-                import json
-                json_dict = json.loads(param1)
-                logger.info(f"Successfully parsed JSON string to dictionary: {json_dict}")
-                
-                # Extract values from the parsed dictionary
-                if 'origin_port' in json_dict and 'destination_port' in json_dict:
-                    origin_port = json_dict['origin_port']
-                    destination_port = json_dict['destination_port']
-                    logger.info(f"Extracted from JSON: origin={origin_port}, destination={destination_port}")
-                elif 'origin' in json_dict and 'destination' in json_dict:
-                    origin_port = json_dict['origin']
-                    destination_port = json_dict['destination']
-                    logger.info(f"Extracted from JSON with short keys: origin={origin_port}, destination={destination_port}")
-                elif len(json_dict) == 2:
-                    # If there are exactly two keys, use them as origin and destination
-                    keys = list(json_dict.keys())
-                    origin_port = json_dict[keys[0]]
-                    destination_port = json_dict[keys[1]]
-                    logger.info(f"Extracted from JSON with generic keys: origin={origin_port}, destination={destination_port}")
-            except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse as JSON: {str(e)}")
-            except Exception as e:
-                logger.error(f"Error processing JSON string: {str(e)}")
-                
-        # Case 3: First parameter is a string containing a key-value format (LangChain workaround)
+        # Case 2: First parameter is a string containing a key-value format (LangChain workaround)
         elif isinstance(param1, str) and param1.find(':') > 0:
             logger.info(f"Processing potential key-value string: {param1}")
             
@@ -410,32 +380,11 @@ class FerryAgent:
                 except Exception as e:
                     logger.error(f"Error in advanced key-value parsing: {str(e)}")
         
-        # Case 4: First parameter is a string and second parameter is a string (direct invocation)
+        # Case 3: First parameter is a string and second parameter is a string (direct invocation)
         elif isinstance(param1, str) and isinstance(param2, str):
             origin_port = param1
             destination_port = param2
             logger.info(f"Using direct string parameters: origin={origin_port}, destination={destination_port}")
-            
-        # Case 5: Special case - direct string parameters for simple route checking 
-        elif isinstance(param1, str) and not param2:
-            logger.info(f"Processing as a direct route query: {param1}")
-            
-            # Handle cases like "Brindisi to Corfu"
-            if ' to ' in param1.lower():
-                parts = param1.lower().split(' to ')
-                if len(parts) == 2:
-                    origin_port = parts[0].strip()
-                    destination_port = parts[1].strip()
-                    logger.info(f"Extracted from 'X to Y' format: origin={origin_port}, destination={destination_port}")
-                    
-            # Handle cases like "from Brindisi to Corfu"
-            elif 'from ' in param1.lower() and ' to ' in param1.lower():
-                from_idx = param1.lower().find('from ')
-                to_idx = param1.lower().find(' to ')
-                if from_idx >= 0 and to_idx > from_idx:
-                    origin_port = param1[from_idx + 5:to_idx].strip()
-                    destination_port = param1[to_idx + 4:].strip()
-                    logger.info(f"Extracted from 'from X to Y' format: origin={origin_port}, destination={destination_port}")
         
         # Final validation - ensure we have both values
         if not origin_port or not destination_port:
