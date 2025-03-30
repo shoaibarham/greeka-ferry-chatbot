@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,75 +18,134 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <div class="container mt-4 mb-4">
-        <div class="chat-container">
-            <div class="chat-header">
-                <h1><i class="fas fa-ship me-2"></i> Greek Ferry Chatbot</h1>
-                <p>Ask about ferry routes, schedules, and prices for Greek islands</p>
-            </div>
-            
-            <div class="chat-body">
-                <div id="messages" class="messages-container"></div>
-                
-                <div class="input-container">
-                    <input 
-                        type="text" 
-                        id="message-input" 
-                        class="message-input"
-                        placeholder="Ask about ferry routes, schedules, or prices..."
-                        aria-label="Type your message">
+    <div class="container-fluid py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="chat-container">
+                    <div class="chat-header">
+                        <h1><i class="fas fa-ship me-2 text-info"></i> Greek Ferry Chatbot</h1>
+                        <p>Your personal guide to ferry travel across the Greek islands</p>
+                    </div>
                     
-                    <button id="send-button" class="send-button" aria-label="Send message">
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
+                    <div class="chat-body">
+                        <div id="messages" class="messages-container"></div>
+                        
+                        <div class="input-container">
+                            <input 
+                                type="text" 
+                                id="message-input" 
+                                class="message-input"
+                                placeholder="Ask about ferry routes, schedules, or prices..."
+                                aria-label="Type your message">
+                            
+                            <button id="send-button" class="send-button" aria-label="Send message">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
-        
-        <div class="mt-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Example Questions</h5>
+                
+                <div class="mt-4">
+                    <div class="card border-0 shadow">
+                        <div class="card-header bg-info bg-opacity-10">
+                            <h5 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Try asking</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-2">
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <div class="example-chip">
+                                        <a href="#" class="example-question">
+                                            Milos to Kimolos?
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <div class="example-chip">
+                                        <a href="#" class="example-question">
+                                            Athens to Santorini
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <div class="example-chip">
+                                        <a href="#" class="example-question">
+                                            Cheapest to Mykonos
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <div class="example-chip">
+                                        <a href="#" class="example-question">
+                                            Paros-Naxos price
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <div class="example-chip">
+                                        <a href="#" class="example-question">
+                                            Ferry to Hydra
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <div class="example-chip">
+                                        <a href="#" class="example-question">
+                                            Fastest to Crete
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <div class="example-chip">
+                                        <a href="#" class="example-question">
+                                            June 2025 ferries
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <div class="example-chip">
+                                        <a href="#" class="example-question">
+                                            Ferry companies
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <div class="row">
+                
+                <div class="info-section mt-4">
+                    <div class="row g-4">
                         <div class="col-md-6">
-                            <ul class="list-group">
-                                <li class="list-group-item">
-                                    <a href="#" class="example-question">
-                                        Is there a ferry from Milos to Kimolos on March 23, 2025?
-                                    </a>
-                                </li>
-                                <li class="list-group-item">
-                                    <a href="#" class="example-question">
-                                        What's the fastest way to get from Piraeus to Sifnos?
-                                    </a>
-                                </li>
-                                <li class="list-group-item">
-                                    <a href="#" class="example-question">
-                                        How much does it cost to go from Kimolos to Serifos?
-                                    </a>
-                                </li>
-                            </ul>
+                            <div class="card border-0 shadow h-100">
+                                <div class="card-header bg-info bg-opacity-10">
+                                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>About</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p>This AI-powered chatbot provides information about ferry routes, schedules, and pricing between Greek islands for 2025. Our data is regularly updated to ensure accuracy.</p>
+                                    <p class="mb-0">Try asking about specific routes, dates, prices, or ferry companies to plan your perfect Greek island hopping adventure!</p>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-md-6">
-                            <ul class="list-group">
-                                <li class="list-group-item">
-                                    <a href="#" class="example-question">
-                                        I want to travel from Milos to Piraeus with a stop in Sifnos
-                                    </a>
-                                </li>
-                                <li class="list-group-item">
-                                    <a href="#" class="example-question">
-                                        What accommodation options are available on the ferry from Serifos to Piraeus?
-                                    </a>
-                                </li>
-                                <li class="list-group-item">
-                                    <a href="#" class="example-question">
-                                        When can I travel from Kimolos to Piraeus in June 2025?
-                                    </a>
-                                </li>
-                            </ul>
+                            <div class="card border-0 shadow h-100">
+                                <div class="card-header bg-info bg-opacity-10">
+                                    <h5 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i>Popular Destinations</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <span class="badge bg-secondary">Santorini</span>
+                                        <span class="badge bg-secondary">Mykonos</span>
+                                        <span class="badge bg-secondary">Crete</span>
+                                        <span class="badge bg-secondary">Paros</span>
+                                        <span class="badge bg-secondary">Naxos</span>
+                                        <span class="badge bg-secondary">Rhodes</span>
+                                        <span class="badge bg-secondary">Milos</span>
+                                        <span class="badge bg-secondary">Hydra</span>
+                                        <span class="badge bg-secondary">Corfu</span>
+                                        <span class="badge bg-secondary">Kos</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
