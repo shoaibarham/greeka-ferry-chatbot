@@ -15,4 +15,6 @@ dependencies = [
     "psycopg2-binary>=2.9.10",
     "pydantic>=2.11.1",
     "sqlalchemy>=2.0.40",
+    "langchain-core>=0.3.49",
+    "requests>=2.32.3",
 ]

@@ -1395,9 +1395,11 @@ dependencies = [
     { name = "gunicorn" },
     { name = "langchain" },
     { name = "langchain-community" },
+    { name = "langchain-core" },
     { name = "langchain-google-genai" },
     { name = "psycopg2-binary" },
     { name = "pydantic" },
+    { name = "requests" },
     { name = "sqlalchemy" },
 ]
 
@@ -1410,9 +1412,11 @@ requires-dist = [
     { name = "gunicorn", specifier = ">=23.0.0" },
     { name = "langchain", specifier = ">=0.3.21" },
     { name = "langchain-community", specifier = ">=0.3.20" },
+    { name = "langchain-core", specifier = ">=0.3.49" },
     { name = "langchain-google-genai", specifier = ">=2.0.10" },
     { name = "psycopg2-binary", specifier = ">=2.9.10" },
     { name = "pydantic", specifier = ">=2.11.1" },
+    { name = "requests", specifier = ">=2.32.3" },
     { name = "sqlalchemy", specifier = ">=2.0.40" },
 ]
 
