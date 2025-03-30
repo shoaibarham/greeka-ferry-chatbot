@@ -244,48 +244,104 @@ class FerryAgent:
             logger.error(f"Traceback: {traceback.format_exc()}")
             return "I'm sorry, I encountered an error while processing your request. Please try asking your question in a different way or try another query about ferry routes or schedules."
 
-    def check_historical_routes(self, origin_port: str = None, destination_port: str = None) -> str:
+    def check_historical_routes(self, param1=None, param2=None) -> str:
         """
         Check historical data for routes between the given ports when current routes aren't found.
         
         Args:
-            origin_port: The name or code of the origin port, or a dictionary containing both ports
-            destination_port: The name or code of the destination port (not needed if origin_port is a dict)
+            param1: Either the origin port name or a dictionary containing both ports
+            param2: The destination port name if param1 is a string
             
         Returns:
             Information about historical routes if found, or a message indicating no historical data
         """
-        # Enable debug logging for parameter inspection
-        logger.info(f"check_historical_routes received: origin_port={origin_port}, destination_port={destination_port}")
+        origin_port = None
+        destination_port = None
         
-        # If origin_port is a dictionary, extract the port values from it
-        if isinstance(origin_port, dict):
-            logger.info(f"Extracting from dictionary: {origin_port}")
-            # Check for various possible key formats
-            if 'origin_port' in origin_port and 'destination_port' in origin_port:
-                destination_port = origin_port.get('destination_port')
-                origin_port = origin_port.get('origin_port')
-                logger.info(f"Extracted from keys 'origin_port'/'destination_port': {origin_port} to {destination_port}")
-            elif 'origin' in origin_port and 'destination' in origin_port:
-                destination_port = origin_port.get('destination')
-                origin_port = origin_port.get('origin')
-                logger.info(f"Extracted from keys 'origin'/'destination': {origin_port} to {destination_port}")
-            else:
-                # Try to find the keys regardless of exact naming
-                keys = list(origin_port.keys())
-                logger.info(f"Dictionary keys available: {keys}")
-                if len(keys) >= 2:
-                    # Just use the first two keys as origin and destination
-                    orig_dict = origin_port  # Save the original dict before we overwrite the variable
-                    origin_port = orig_dict.get(keys[0])
-                    destination_port = orig_dict.get(keys[1])
-                    logger.info(f"Extracted using first two keys: {origin_port} to {destination_port}")
+        # Enable detailed logging for parameter inspection
+        logger.info(f"check_historical_routes received: param1={param1}, param2={param2}")
         
-        # Validate that we have both parameters
+        # Case 1: First parameter is a dictionary (from tool invocation)
+        if isinstance(param1, dict):
+            logger.info(f"Processing dictionary input: {param1}")
+            
+            # Try to extract values based on common key patterns
+            if 'origin_port' in param1 and 'destination_port' in param1:
+                origin_port = param1['origin_port']
+                destination_port = param1['destination_port']
+                logger.info(f"Extracted from standard keys: origin={origin_port}, destination={destination_port}")
+            
+            elif 'origin' in param1 and 'destination' in param1:
+                origin_port = param1['origin']
+                destination_port = param1['destination']
+                logger.info(f"Extracted from short keys: origin={origin_port}, destination={destination_port}")
+                
+            # If it's just a flat dictionary with exactly two values, use those
+            elif len(param1) == 2:
+                keys = list(param1.keys())
+                origin_port = param1[keys[0]]
+                destination_port = param1[keys[1]]
+                logger.info(f"Extracted from generic keys: origin={origin_port}, destination={destination_port}")
+                
+            # Special case: Sometimes LangChain sends a dict with just one key
+            elif len(param1) == 1 and isinstance(list(param1.values())[0], dict):
+                inner_dict = list(param1.values())[0]
+                logger.info(f"Found nested dictionary: {inner_dict}")
+                
+                if 'origin_port' in inner_dict and 'destination_port' in inner_dict:
+                    origin_port = inner_dict['origin_port']
+                    destination_port = inner_dict['destination_port']
+                    logger.info(f"Extracted from nested dict: origin={origin_port}, destination={destination_port}")
+                elif len(inner_dict) >= 2:
+                    inner_keys = list(inner_dict.keys())
+                    origin_port = inner_dict[inner_keys[0]]
+                    destination_port = inner_dict[inner_keys[1]]
+                    logger.info(f"Extracted from nested generic keys: origin={origin_port}, destination={destination_port}")
+            
+            # If all extraction attempts fail, log the dictionary structure
+            if origin_port is None or destination_port is None:
+                # Try harder with recursive extraction (go deeper in nested structures)
+                def extract_values(d, depth=0, max_depth=3):
+                    if depth > max_depth:
+                        return None, None
+                    
+                    # If this level has origin/destination keys, extract them
+                    if isinstance(d, dict):
+                        if 'origin_port' in d and 'destination_port' in d:
+                            return d['origin_port'], d['destination_port']
+                        elif 'origin' in d and 'destination' in d:
+                            return d['origin'], d['destination']
+                        
+                        # Try to recurse into nested dictionaries
+                        for k, v in d.items():
+                            if isinstance(v, dict):
+                                o, d = extract_values(v, depth + 1, max_depth)
+                                if o and d:
+                                    return o, d
+                    return None, None
+                
+                origin_port, destination_port = extract_values(param1)
+                if origin_port and destination_port:
+                    logger.info(f"Extracted from recursive search: origin={origin_port}, destination={destination_port}")
+                else:
+                    # Last ditch effort - see if we can get a string representation from the dict
+                    dict_str = str(param1)
+                    logger.error(f"Failed to extract ports from complex dictionary: {dict_str}")
+        
+        # Case 2: First parameter is a string (direct invocation)
+        elif isinstance(param1, str) and isinstance(param2, str):
+            origin_port = param1
+            destination_port = param2
+            logger.info(f"Using direct string parameters: origin={origin_port}, destination={destination_port}")
+        
+        # Final validation - ensure we have both values
         if not origin_port or not destination_port:
-            error_msg = f"Error: Both origin_port and destination_port must be provided to check historical routes. Received: origin_port={origin_port}, destination_port={destination_port}"
-            logger.error(error_msg)
-            return error_msg
+            error_message = f"Error: Could not extract origin and destination ports from parameters: param1={param1}, param2={param2}"
+            logger.error(error_message)
+            # Try to be more helpful in the response by including debugging info
+            if isinstance(param1, dict):
+                error_message += f"\nReceived dictionary with keys: {list(param1.keys())}"
+            return error_message
         try:
             logger.info(f"Checking historical routes from {origin_port} to {destination_port}")
             
