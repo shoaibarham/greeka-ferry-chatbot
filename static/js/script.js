@@ -1,5 +1,5 @@
 // Constants
-const API_ENDPOINT = '/api/chat';
+const API_ENDPOINT = '/api/chat';  // This should match the Flask route
 let conversationId = null;
 
 // DOM elements
@@ -45,13 +45,12 @@ async function sendMessage() {
   try {
     // Prepare request data
     const requestData = {
-      message: userMessage
+      message: userMessage,
+      conversation_id: conversationId || null
     };
     
-    // Add conversation ID if it exists
-    if (conversationId) {
-      requestData.conversation_id = conversationId;
-    }
+    // Log the request (for debugging)
+    console.log("Sending request:", requestData);
     
     // Send API request
     const response = await fetch(API_ENDPOINT, {
@@ -64,6 +63,9 @@ async function sendMessage() {
     
     // Parse response
     const data = await response.json();
+    
+    // Log the response (for debugging)
+    console.log("Received response:", data);
     
     // Remove loading indicator
     loadingIndicator.remove();

@@ -87,10 +87,15 @@ def chat():
         if ferry_agent is None:
             initialize_agent()
             
+        # Log the raw request data for debugging
+        logger.info(f"Received chat request: {request.data}")
+        
         # Get user message
         data = request.json
         user_message = data.get("message", "")
         conversation_id = data.get("conversation_id", None)
+        
+        logger.info(f"Processing message: '{user_message}' (conversation_id: {conversation_id})")
         
         # Initialize or retrieve conversation history
         if not conversation_id:
@@ -141,11 +146,16 @@ def chat():
             # Process the query with ferry agent normally
             response = ferry_agent.query(user_message, conversation_id)
         
+        # Log the response data for debugging
+        logger.info(f"Generated response of length {len(response)}")
+        
         # Return response to frontend
-        return jsonify({
+        result = {
             "response": response,
             "conversation_id": conversation_id
-        })
+        }
+        
+        return jsonify(result)
     
     except Exception as e:
         logger.error(f"Error processing chat request: {str(e)}", exc_info=True)
