@@ -22,9 +22,23 @@ document.addEventListener('DOMContentLoaded', () => {
   
   sendButton.addEventListener('click', sendMessage);
   
+  // Load the agent selector script
+  loadScript('/static/js/agent_selector.js');
+  
   // Add initial greeting from assistant
-  addMessage('Welcome to the Greek Ferry Chatbot! How can I help you with your ferry travel plans today?', 'assistant');
+  addMessage('Welcome to the Greek Ferry Chatbot! How can I help you with your ferry travel plans today? You can now select specialized agents using the dropdown above.', 'assistant');
 });
+
+// Function to dynamically load a script
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = src;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
 
 // Function to send user message to the API
 async function sendMessage() {
@@ -53,6 +67,29 @@ async function sendMessage() {
       requestData.conversation_id = conversationId;
     }
     
+    // Add agent type if the agent selector is available
+    if (window.agentSelector && typeof window.agentSelector.addAgentToRequest === 'function') {
+      window.agentSelector.addAgentToRequest(requestData);
+      
+      // Show which agent is being used (except for 'auto')
+      const agentType = window.agentSelector.getCurrentAgentType();
+      if (agentType !== 'auto') {
+        const agentNames = {
+          'route': 'Route Finding Agent',
+          'price': 'Price Comparison Agent',
+          'schedule': 'Schedule Optimization Agent',
+          'travel': 'Travel Planning Agent'
+        };
+        
+        // Add a subtle indicator showing which agent is processing the query
+        const agentIndicator = document.createElement('div');
+        agentIndicator.classList.add('agent-indicator');
+        agentIndicator.textContent = `Using ${agentNames[agentType] || agentType}...`;
+        messagesContainer.appendChild(agentIndicator);
+        scrollToBottom();
+      }
+    }
+    
     // Send API request
     const response = await fetch(API_ENDPOINT, {
       method: 'POST',
@@ -67,6 +104,12 @@ async function sendMessage() {
     
     // Remove loading indicator
     loadingIndicator.remove();
+    
+    // Remove agent indicator if it exists
+    const agentIndicator = document.querySelector('.agent-indicator');
+    if (agentIndicator) {
+      agentIndicator.remove();
+    }
     
     if (data.error) {
       // Handle error

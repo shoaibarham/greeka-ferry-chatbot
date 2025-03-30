@@ -520,3 +520,18 @@ body {
   margin-left: 0;
   color: var(--bs-secondary-color);
 }
+
+/* Agent indicator */
+.agent-indicator {
+  background-color: var(--bs-primary-bg-subtle);
+  color: var(--bs-secondary-color);
+  font-size: 0.85rem;
+  padding: 0.5rem 1rem;
+  border-radius: 12px;
+  margin: 0.5rem 0;
+  text-align: center;
+  font-style: italic;
+  animation: fade-in 0.3s ease-in-out;
+  border: 1px solid var(--bs-border-subtle);
+  align-self: center;
+}
