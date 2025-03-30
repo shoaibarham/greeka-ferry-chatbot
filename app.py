@@ -97,8 +97,49 @@ def chat():
             conversation_id = datetime.now().strftime("%Y%m%d%H%M%S")
             session[conversation_id] = []
         
-        # Process the query with ferry agent
-        response = ferry_agent.query(user_message, conversation_id)
+        # Check if this is a direct route query (e.g., "Brindisi to Corfu")
+        import re
+        direct_route_pattern = r"^([A-Za-z\s\(\)]+)\s+to\s+([A-Za-z\s\(\)]+)$"
+        route_match = re.match(direct_route_pattern, user_message)
+        
+        if route_match:
+            # This appears to be a direct route query, let's handle it specially
+            origin = route_match.group(1).strip()
+            destination = route_match.group(2).strip()
+            logger.info(f"Detected direct route query: {origin} to {destination}")
+            
+            # First check current routes using a safe query through the ferry agent
+            route_query = f"""
+            SELECT route_number, company, origin_port_name, destination_port_name, 
+                   departure_time, arrival_time, duration 
+            FROM routes 
+            WHERE LOWER(origin_port_name) = LOWER('{origin}') 
+              AND LOWER(destination_port_name) = LOWER('{destination}')
+            """
+            
+            # Get direct routes
+            route_results = ferry_agent.run_ferry_query(route_query)
+            
+            if "No results found" in route_results or not route_results:
+                # If no current routes, check historical data directly
+                logger.info(f"No current routes found, checking historical data for {origin} to {destination}")
+                historical_results = ferry_agent.check_historical_routes(origin, destination)
+                
+                if "No historical routes found" in historical_results:
+                    response = f"I couldn't find any current ferry routes from {origin} to {destination}. " \
+                              f"Let me check the historical data...\n\n" \
+                              f"I don't have any historical records of routes between {origin} and {destination}. " \
+                              f"This route may not be offered by any ferry company, or it might require a connection " \
+                              f"through another port."
+                else:
+                    response = f"I couldn't find any current ferry routes from {origin} to {destination}. " \
+                              f"Let me check the historical data...\n\n{historical_results}"
+            else:
+                # Let the agent handle the response for proper formatting
+                response = ferry_agent.query(user_message, conversation_id)
+        else:
+            # Process the query with ferry agent normally
+            response = ferry_agent.query(user_message, conversation_id)
         
         # Return response to frontend
         return jsonify({
