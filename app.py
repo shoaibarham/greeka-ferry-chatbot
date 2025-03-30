@@ -5,8 +5,6 @@ from datetime import datetime
 import subprocess
 import threading
 import time
-import re
-import traceback
 
 from flask import Flask, render_template, request, jsonify, session
 
@@ -22,9 +20,8 @@ app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key")
 DB_PATH = 'gtfs.db'
 HISTORICAL_DB_PATH = 'previous_db.db'
 
-# Initialize agents
+# Initialize ferry agent (outside the routes to avoid recreation on each request)
 ferry_agent = None
-agent_manager = None
 
 def initialize_databases():
     """Initialize both the main and historical databases if needed."""
@@ -65,31 +62,8 @@ def initialize_agent():
             logger.error(f"Failed to initialize ferry agent: {str(e)}")
             raise
 
-def initialize_agent_manager():
-    """Initialize the agent manager if not already initialized."""
-    global agent_manager
-    if agent_manager is None:
-        try:
-            # Make sure databases are initialized first
-            initialize_databases()
-            
-            # Import and initialize the agent manager
-            from agents.agent_manager import get_agent_manager
-            agent_manager = get_agent_manager()
-            logger.info("Agent manager initialized successfully")
-        except Exception as e:
-            logger.error(f"Failed to initialize agent manager: {str(e)}")
-            logger.error(traceback.format_exc())
-            # Fall back to the main ferry agent
-            initialize_agent()
-            raise
-
-# Initialize the agents at app startup
-try:
-    initialize_agent_manager()
-except Exception as e:
-    logger.error(f"Failed to initialize agent manager, falling back to main ferry agent: {str(e)}")
-    initialize_agent()
+# Initialize the ferry agent at app startup
+initialize_agent()
 
 # Routes
 @app.route("/")
@@ -105,95 +79,72 @@ def admin():
 @app.route("/api/chat", methods=["POST"])
 def chat():
     """
-    Process user queries and return AI-generated responses using the appropriate agent.
+    Process user queries and return AI-generated responses
+    using the Gemini model and FerryAgent.
     """
     try:
+        # Make sure agent is initialized
+        if ferry_agent is None:
+            initialize_agent()
+            
         # Get user message
         data = request.json
         user_message = data.get("message", "")
         conversation_id = data.get("conversation_id", None)
-        agent_type = data.get("agent_type", "auto")  # Get selected agent type
         
         # Initialize or retrieve conversation history
         if not conversation_id:
             conversation_id = datetime.now().strftime("%Y%m%d%H%M%S")
             session[conversation_id] = []
         
-        # Try to use the agent manager if available
-        if agent_manager is not None:
-            logger.info(f"Processing query with agent manager: '{user_message}' (session: {conversation_id}, agent: {agent_type})")
+        # Check if this is a direct route query (e.g., "Brindisi to Corfu")
+        import re
+        direct_route_pattern = r"^([A-Za-z\s\(\)]+)\s+to\s+([A-Za-z\s\(\)]+)$"
+        route_match = re.match(direct_route_pattern, user_message)
+        
+        if route_match:
+            # This appears to be a direct route query, let's handle it specially
+            origin = route_match.group(1).strip()
+            destination = route_match.group(2).strip()
+            logger.info(f"Detected direct route query: {origin} to {destination}")
             
-            # Handle specific agent types
-            if agent_type == "route":
-                logger.info("Using Route Finding Agent directly")
-                response = agent_manager.route_agent.query(user_message, conversation_id)
-            elif agent_type == "price":
-                logger.info("Using Price Comparison Agent directly")
-                response = agent_manager.price_agent.query(user_message, conversation_id)
-            elif agent_type == "schedule":
-                logger.info("Using Schedule Optimization Agent directly")
-                response = agent_manager.schedule_agent.query(user_message, conversation_id)
-            elif agent_type == "travel":
-                logger.info("Using Travel Planning Agent directly")
-                response = agent_manager.travel_agent.query(user_message, conversation_id)
-            else:
-                # Auto-detect or fallback
-                response = agent_manager.process_query(user_message, conversation_id)
-        else:
-            # Fall back to the main ferry agent
-            logger.info(f"Agent manager not available, using main ferry agent")
-            # Make sure agent is initialized
-            if ferry_agent is None:
-                initialize_agent()
-                
-            # Check if this is a direct route query (e.g., "Brindisi to Corfu")
-            direct_route_pattern = r"^([A-Za-z\s\(\)]+)\s+to\s+([A-Za-z\s\(\)]+)$"
-            route_match = re.match(direct_route_pattern, user_message)
+            # First check current routes using a safe query through the ferry agent
+            route_query = f"""
+            SELECT route_number, company, origin_port_name, destination_port_name, 
+                   departure_time, arrival_time, duration 
+            FROM routes 
+            WHERE LOWER(origin_port_name) = LOWER('{origin}') 
+              AND LOWER(destination_port_name) = LOWER('{destination}')
+            """
             
-            if route_match:
-                # This appears to be a direct route query, let's handle it specially
-                origin = route_match.group(1).strip()
-                destination = route_match.group(2).strip()
-                logger.info(f"Detected direct route query: {origin} to {destination}")
+            # Get direct routes
+            route_results = ferry_agent.run_ferry_query(route_query)
+            
+            if "No results found" in route_results or not route_results:
+                # If no current routes, check historical data directly
+                logger.info(f"No current routes found, checking historical data for {origin} to {destination}")
+                historical_results = ferry_agent.check_historical_routes(origin, destination)
                 
-                # First check for direct routes using a safe query through the ferry agent
-                route_query = f"""
-                SELECT route_number, company, origin_port_name, destination_port_name, 
-                       departure_time, arrival_time, duration 
-                FROM routes 
-                WHERE LOWER(origin_port_name) = LOWER('{origin}') 
-                  AND LOWER(destination_port_name) = LOWER('{destination}')
-                """
-                
-                # Get direct routes
-                route_results = ferry_agent.run_ferry_query(route_query)
-                
-                if "No results found" in route_results or not route_results:
-                    # If no current routes, check historical data directly
-                    logger.info(f"No current routes found, checking historical data for {origin} to {destination}")
-                    historical_results = ferry_agent.check_historical_routes(origin, destination)
-                    
-                    if "No historical routes found" in historical_results:
-                        response = f"I couldn't find any current ferry routes from {origin} to {destination}. " \
-                                  f"Let me check the historical data...\n\n" \
-                                  f"I don't have any historical records of routes between {origin} and {destination}. " \
-                                  f"This route may not be offered by any ferry company, or it might require a connection " \
-                                  f"through another port."
-                    else:
-                        response = f"I couldn't find any current ferry routes from {origin} to {destination}. " \
-                                  f"Let me check the historical data...\n\n{historical_results}"
+                if "No historical routes found" in historical_results:
+                    response = f"I couldn't find any current ferry routes from {origin} to {destination}. " \
+                              f"Let me check the historical data...\n\n" \
+                              f"I don't have any historical records of routes between {origin} and {destination}. " \
+                              f"This route may not be offered by any ferry company, or it might require a connection " \
+                              f"through another port."
                 else:
-                    # Let the agent handle the response for proper formatting
-                    response = ferry_agent.query(user_message, conversation_id)
+                    response = f"I couldn't find any current ferry routes from {origin} to {destination}. " \
+                              f"Let me check the historical data...\n\n{historical_results}"
             else:
-                # Process the query with ferry agent normally
+                # Let the agent handle the response for proper formatting
                 response = ferry_agent.query(user_message, conversation_id)
+        else:
+            # Process the query with ferry agent normally
+            response = ferry_agent.query(user_message, conversation_id)
         
         # Return response to frontend
         return jsonify({
             "response": response,
-            "conversation_id": conversation_id,
-            "agent_used": agent_type
+            "conversation_id": conversation_id
         })
     
     except Exception as e:
@@ -213,19 +164,6 @@ def update_data():
         import sqlite_loader
         source_file = request.json.get("source_file", "attached_assets/GTFS_data_v5.json")
         result = sqlite_loader.load_data(source_file)
-        
-        # Reinitialize agents after data update
-        global ferry_agent, agent_manager
-        ferry_agent = None
-        agent_manager = None
-        
-        # Try to initialize agent manager first
-        try:
-            initialize_agent_manager()
-        except Exception as e:
-            logger.error(f"Failed to reinitialize agent manager: {str(e)}")
-            initialize_agent()
-        
         return jsonify({"success": True, "message": result})
     except Exception as e:
         logger.error(f"Error updating ferry data: {str(e)}", exc_info=True)
@@ -246,17 +184,10 @@ def update_historical_data():
         source_file = request.json.get("source_file", "attached_assets/GTFS appear dates.json")
         result = historical_data_loader.load_historical_data(source_file)
         
-        # Reinitialize agents after data update
-        global ferry_agent, agent_manager
-        ferry_agent = None
-        agent_manager = None
-        
-        # Try to initialize agent manager first
-        try:
-            initialize_agent_manager()
-        except Exception as e:
-            logger.error(f"Failed to reinitialize agent manager: {str(e)}")
-            initialize_agent()
+        # Reinitialize the ferry agent to incorporate the updated historical data
+        global ferry_agent
+        from ferry_agent import FerryAgent
+        ferry_agent = FerryAgent()
         
         return jsonify({"success": True, "message": result})
     except Exception as e:
@@ -273,15 +204,14 @@ def get_ports():
     try:
         search_term = request.args.get("search", "")
         
-        # Use ferry_agent (which should always be available or can fall back to)
-        if ferry_agent is None:
-            initialize_agent()
-            
-        port_info = ferry_agent.get_port_information(search_term)
-        # Split the port info string into a list of ports
-        ports = [{"code": line.split(":")[0].strip(), "name": line.split(":")[1].strip()} 
-                 for line in port_info.split("\n") if ":" in line]
-        return jsonify({"ports": ports})
+        if ferry_agent:
+            port_info = ferry_agent.get_port_information(search_term)
+            # Split the port info string into a list of ports
+            ports = [{"code": line.split(":")[0].strip(), "name": line.split(":")[1].strip()} 
+                     for line in port_info.split("\n") if ":" in line]
+            return jsonify({"ports": ports})
+        else:
+            return jsonify({"error": "Ferry agent not initialized"}), 500
     except Exception as e:
         logger.error(f"Error retrieving ports: {str(e)}")
         return jsonify({"error": str(e)}), 500
@@ -342,36 +272,10 @@ def database_status():
             except Exception as e:
                 logger.error(f"Error reading update log: {str(e)}")
         
-        # Check agent status
-        agent_status = {
-            "main_ferry_agent": ferry_agent is not None,
-            "agent_manager": agent_manager is not None,
-            "specialized_agents": []
-        }
-        
-        # Check which specialized agents are initialized
-        if agent_manager is not None:
-            # Check route agent
-            if hasattr(agent_manager, '_route_agent') and agent_manager._route_agent is not None:
-                agent_status["specialized_agents"].append("route_agent")
-            
-            # Check price agent
-            if hasattr(agent_manager, '_price_agent') and agent_manager._price_agent is not None:
-                agent_status["specialized_agents"].append("price_agent")
-            
-            # Check schedule agent
-            if hasattr(agent_manager, '_schedule_agent') and agent_manager._schedule_agent is not None:
-                agent_status["specialized_agents"].append("schedule_agent")
-            
-            # Check travel agent
-            if hasattr(agent_manager, '_travel_agent') and agent_manager._travel_agent is not None:
-                agent_status["specialized_agents"].append("travel_agent")
-        
         return jsonify({
             "status": "online",
             "table_counts": table_counts,
             "historical_counts": historical_counts,
-            "agent_status": agent_status,
             "last_update": last_update
         })
     except Exception as e:
