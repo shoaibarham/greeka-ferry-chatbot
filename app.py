@@ -116,7 +116,7 @@ def chat():
 @app.route("/api/update_data", methods=["POST"])
 def update_data():
     """
-    Endpoint to trigger data update process.
+    Endpoint to trigger main data update process.
     This would typically be called by a scheduled task.
     """
     try:
@@ -129,6 +129,31 @@ def update_data():
         return jsonify({
             "success": False,
             "error": "Failed to update ferry data",
+            "details": str(e)
+        }), 500
+        
+@app.route("/api/update_historical_data", methods=["POST"])
+def update_historical_data():
+    """
+    Endpoint to trigger historical data update process.
+    Updates the historical route database with past and future route availability.
+    """
+    try:
+        import historical_data_loader
+        source_file = request.json.get("source_file", "attached_assets/GTFS appear dates.json")
+        result = historical_data_loader.load_historical_data(source_file)
+        
+        # Reinitialize the ferry agent to incorporate the updated historical data
+        global ferry_agent
+        from ferry_agent import FerryAgent
+        ferry_agent = FerryAgent()
+        
+        return jsonify({"success": True, "message": result})
+    except Exception as e:
+        logger.error(f"Error updating historical ferry data: {str(e)}", exc_info=True)
+        return jsonify({
+            "success": False,
+            "error": "Failed to update historical ferry data",
             "details": str(e)
         }), 500
 

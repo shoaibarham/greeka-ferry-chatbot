@@ -56,6 +56,19 @@
                 
                 <div class="card mb-4">
                     <div class="card-header bg-secondary text-white">
+                        <h4 class="mb-0"><i class="fas fa-clock-rotate-left me-2"></i> Historical Database</h4>
+                    </div>
+                    <div class="card-body" id="historical-database-status">
+                        <div class="d-flex justify-content-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-header bg-secondary text-white">
                         <h4 class="mb-0"><i class="fas fa-history me-2"></i> Update History</h4>
                     </div>
                     <div class="card-body">
@@ -70,21 +83,54 @@
                         <h4 class="mb-0"><i class="fas fa-sync-alt me-2"></i> Manual Data Update</h4>
                     </div>
                     <div class="card-body">
-                        <p>Trigger a manual update of the ferry data from the source file.</p>
+                        <ul class="nav nav-tabs" id="updateTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="main-tab" data-bs-toggle="tab" data-bs-target="#main-update" type="button" role="tab" aria-controls="main-update" aria-selected="true">Main Database</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="historical-tab" data-bs-toggle="tab" data-bs-target="#historical-update" type="button" role="tab" aria-controls="historical-update" aria-selected="false">Historical Database</button>
+                            </li>
+                        </ul>
                         
-                        <form id="update-form">
-                            <div class="mb-3">
-                                <label for="source-file" class="form-label">Source File</label>
-                                <input type="text" class="form-control" id="source-file" value="attached_assets/GTFS_data_v5.json">
-                                <div class="form-text">Path to the data file to use for the update.</div>
+                        <div class="tab-content mt-3" id="updateTabsContent">
+                            <!-- Main Database Update Tab -->
+                            <div class="tab-pane fade show active" id="main-update" role="tabpanel" aria-labelledby="main-tab">
+                                <p>Trigger a manual update of the current ferry data from the source file.</p>
+                                
+                                <form id="update-form">
+                                    <div class="mb-3">
+                                        <label for="source-file" class="form-label">Source File</label>
+                                        <input type="text" class="form-control" id="source-file" value="attached_assets/GTFS_data_v5.json">
+                                        <div class="form-text">Path to the main data file to use for the update.</div>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-sync-alt me-2"></i> Update Main Database
+                                    </button>
+                                </form>
+                                
+                                <div id="update-result" class="alert mt-3 d-none"></div>
                             </div>
                             
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-sync-alt me-2"></i> Update Database
-                            </button>
-                        </form>
-                        
-                        <div id="update-result" class="alert mt-3 d-none"></div>
+                            <!-- Historical Database Update Tab -->
+                            <div class="tab-pane fade" id="historical-update" role="tabpanel" aria-labelledby="historical-tab">
+                                <p>Trigger a manual update of the historical ferry route data from the source file.</p>
+                                
+                                <form id="historical-update-form">
+                                    <div class="mb-3">
+                                        <label for="historical-source-file" class="form-label">Historical Data Source File</label>
+                                        <input type="text" class="form-control" id="historical-source-file" value="attached_assets/GTFS appear dates.json">
+                                        <div class="form-text">Path to the historical data file to use for the update.</div>
+                                    </div>
+                                    
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-clock-rotate-left me-2"></i> Update Historical Database
+                                    </button>
+                                </form>
+                                
+                                <div id="historical-update-result" class="alert mt-3 d-none"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
@@ -120,7 +166,7 @@
                 const data = await response.json();
                 
                 if (data.status === 'online') {
-                    // Display table counts
+                    // Display main database table counts
                     const statusHtml = `
                         <div class="table-responsive">
                             <table class="table table-striped">
@@ -144,6 +190,41 @@
                     
                     document.getElementById('database-status').innerHTML = statusHtml;
                     
+                    // Display historical database counts
+                    if (data.historical_counts) {
+                        const historicalHtml = `
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Table</th>
+                                            <th>Record Count</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${Object.entries(data.historical_counts).map(([table, count]) => `
+                                            <tr>
+                                                <td>${formatTableName(table)}</td>
+                                                <td>${count.toLocaleString()}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p class="text-muted mt-2">
+                                <i class="fas fa-info-circle"></i> Historical data is used when current routes aren't found to show when they were previously available or are scheduled for the future.
+                            </p>
+                        `;
+                        
+                        document.getElementById('historical-database-status').innerHTML = historicalHtml;
+                    } else {
+                        document.getElementById('historical-database-status').innerHTML = `
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i> No historical database information available.
+                            </div>
+                        `;
+                    }
+                    
                     // Update last update info
                     if (data.last_update) {
                         document.getElementById('last-update').textContent = `Last update: ${data.last_update}`;
@@ -157,9 +238,22 @@
                             ${data.error || 'Unknown error'}
                         </div>
                     `;
+                    
+                    document.getElementById('historical-database-status').innerHTML = `
+                        <div class="alert alert-danger">
+                            Database status: Error<br>
+                            ${data.error || 'Unknown error'}
+                        </div>
+                    `;
                 }
             } catch (error) {
                 document.getElementById('database-status').innerHTML = `
+                    <div class="alert alert-danger">
+                        Failed to fetch database status: ${error.message}
+                    </div>
+                `;
+                
+                document.getElementById('historical-database-status').innerHTML = `
                     <div class="alert alert-danger">
                         Failed to fetch database status: ${error.message}
                     </div>
@@ -198,7 +292,7 @@
             `;
         }
         
-        // Handle manual update form submission
+        // Handle main database update form submission
         document.getElementById('update-form').addEventListener('submit', async (event) => {
             event.preventDefault();
             
@@ -210,7 +304,7 @@
                     <div class="spinner-border text-primary me-2" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
-                    <span>Updating database... This may take a few minutes.</span>
+                    <span>Updating main database... This may take a few minutes.</span>
                 </div>
             `;
             updateResult.classList.remove('d-none', 'alert-success', 'alert-danger');
@@ -241,6 +335,54 @@
                 }
             } catch (error) {
                 updateResult.textContent = `Failed to update database: ${error.message}`;
+                updateResult.classList.remove('alert-info', 'alert-success');
+                updateResult.classList.add('alert-danger');
+            }
+        });
+        
+        // Handle historical database update form submission
+        document.getElementById('historical-update-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            
+            const sourceFile = document.getElementById('historical-source-file').value;
+            const updateResult = document.getElementById('historical-update-result');
+            
+            updateResult.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <div class="spinner-border text-primary me-2" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <span>Updating historical database... This may take a few minutes.</span>
+                </div>
+            `;
+            updateResult.classList.remove('d-none', 'alert-success', 'alert-danger');
+            updateResult.classList.add('alert-info');
+            
+            try {
+                const response = await fetch('/api/update_historical_data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ source_file: sourceFile })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateResult.textContent = data.message;
+                    updateResult.classList.remove('alert-info', 'alert-danger');
+                    updateResult.classList.add('alert-success');
+                    
+                    // Refresh database status
+                    fetchDatabaseStatus();
+                } else {
+                    updateResult.textContent = `Error: ${data.error} - ${data.details}`;
+                    updateResult.classList.remove('alert-info', 'alert-success');
+                    updateResult.classList.add('alert-danger');
+                }
+            } catch (error) {
+                updateResult.textContent = `Failed to update historical database: ${error.message}`;
                 updateResult.classList.remove('alert-info', 'alert-success');
                 updateResult.classList.add('alert-danger');
             }

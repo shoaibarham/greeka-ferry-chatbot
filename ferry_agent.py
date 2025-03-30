@@ -103,6 +103,31 @@ class FerryAgent:
             results = execute_query(query)
             
             if not results:
+                # Try to detect if this is a route search query
+                if "SELECT" in query.upper() and "FROM routes" in query.upper() and "origin_port" in query.lower() and "destination_port" in query.lower():
+                    logger.info("Route search query with no results detected. Should check historical data.")
+                    
+                    # Extract origin and destination from query (basic extraction)
+                    origin_match = None
+                    destination_match = None
+                    
+                    # Check for LIKE conditions with port names or codes
+                    import re
+                    origin_pattern = r"(origin_port_name|origin_port_code)[\s]+LIKE[\s]+['\"]%([^'\"]+)%['\"]"
+                    destination_pattern = r"(destination_port_name|destination_port_code)[\s]+LIKE[\s]+['\"]%([^'\"]+)%['\"]"
+                    
+                    origin_matches = re.findall(origin_pattern, query, re.IGNORECASE)
+                    destination_matches = re.findall(destination_pattern, query, re.IGNORECASE)
+                    
+                    if origin_matches and destination_matches:
+                        origin_match = origin_matches[0][1]
+                        destination_match = destination_matches[0][1]
+                        
+                        logger.info(f"Extracted origin: {origin_match}, destination: {destination_match}")
+                        logger.info("Will suggest checking historical data for this route.")
+                        
+                        return f"No current routes found between {origin_match} and {destination_match}. Consider using the 'check_historical_routes' tool with these ports to see if this route operated in the past or is scheduled for the future."
+                
                 return "No results found for the given query."
             
             # Format the results as a readable string
@@ -241,6 +266,13 @@ class FerryAgent:
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
             
+            # Clean the input parameters to improve matching
+            origin_port = origin_port.strip().lower()
+            destination_port = destination_port.strip().lower()
+            
+            # Log the cleaned parameters
+            logger.info(f"Cleaned parameters - origin: '{origin_port}', destination: '{destination_port}'")
+            
             # Search in the historical_date_ranges table with case-insensitive comparison
             query = """
             SELECT 
@@ -260,16 +292,52 @@ class FerryAgent:
             origin_pattern = f"%{origin_port}%"
             destination_pattern = f"%{destination_port}%"
             
+            # Log the query parameters
+            logger.info(f"Running historical search with patterns: origin='{origin_pattern}', destination='{destination_pattern}'")
+            
             cursor.execute(query, (origin_port, origin_pattern, destination_port, destination_pattern))
             results = cursor.fetchall()
             
+            # Log the number of results found
+            logger.info(f"Found {len(results) if results else 0} results in forward direction")
+            
             if not results or len(results) == 0:
                 # Try the reverse direction
+                logger.info(f"Trying reverse direction search")
                 cursor.execute(query, (destination_port, destination_pattern, origin_port, origin_pattern))
                 results = cursor.fetchall()
                 
+                # Log the number of results found in reverse direction
+                logger.info(f"Found {len(results) if results else 0} results in reverse direction")
+                
                 if not results or len(results) == 0:
-                    return f"No historical routes found between {origin_port} and {destination_port} in either direction."
+                    # Try a more fuzzy search by using just the first few characters
+                    logger.info("Trying fuzzy search with shorter patterns")
+                    
+                    # Get the first 3-4 characters of each port name for a more fuzzy search
+                    origin_fuzzy = origin_port[:min(4, len(origin_port))]
+                    dest_fuzzy = destination_port[:min(4, len(destination_port))]
+                    
+                    origin_fuzzy_pattern = f"%{origin_fuzzy}%"
+                    dest_fuzzy_pattern = f"%{dest_fuzzy}%"
+                    
+                    logger.info(f"Fuzzy patterns: origin='{origin_fuzzy_pattern}', destination='{dest_fuzzy_pattern}'")
+                    
+                    # Try forward direction with fuzzy patterns
+                    cursor.execute(query, (origin_port, origin_fuzzy_pattern, destination_port, dest_fuzzy_pattern))
+                    results = cursor.fetchall()
+                    
+                    logger.info(f"Found {len(results) if results else 0} results with fuzzy forward search")
+                    
+                    if not results or len(results) == 0:
+                        # Try reverse direction with fuzzy patterns
+                        cursor.execute(query, (destination_port, dest_fuzzy_pattern, origin_port, origin_fuzzy_pattern))
+                        results = cursor.fetchall()
+                        
+                        logger.info(f"Found {len(results) if results else 0} results with fuzzy reverse search")
+                        
+                        if not results or len(results) == 0:
+                            return f"No historical routes found between {origin_port} and {destination_port} in either direction."
             
             # Format the results
             from datetime import datetime
@@ -278,6 +346,9 @@ class FerryAgent:
             historical_info = []
             for row in results:
                 origin, destination, earliest_start, latest_end, first_appeared, count = row
+                
+                # Log the row data
+                logger.info(f"Processing row: {row}")
                 
                 # Check if the route is entirely in the past, future, or spans the current date
                 message = ""
@@ -291,7 +362,10 @@ class FerryAgent:
                 historical_info.append(f"Historical route found from {origin} to {destination}. {message}")
             
             conn.close()
-            return "\n\n".join(historical_info)
+            
+            result = "\n\n".join(historical_info)
+            logger.info(f"Returning historical data result with {len(historical_info)} entries")
+            return result
             
         except Exception as e:
             logger.error(f"Error checking historical routes: {str(e)}")

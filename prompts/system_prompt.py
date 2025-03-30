@@ -72,26 +72,32 @@ end_date: Last recorded operational date of the route (YYYY-MM-DD).
 appear_date: Date when the route first appeared in the schedule (YYYY-MM-DD).
 
 ## 2. Handling Historical Data for Unavailable Routes
-If a requested ferry route is unavailable in the current schedule:
+IMPORTANT! When no direct ferry route is found in the current schedule, ALWAYS immediately check historical data!
 
-1. Use the `check_historical_routes` tool to query historical data between the origin and destination
-2. The tool checks the `historical_date_ranges` table in `previous_db.db` using provided parameters:
+Follow these steps for every route query:
+1. First, search for the route in the current database
+2. If the route is not found, ALWAYS use the `check_historical_routes` tool with these parameters:
    - origin_port: The name or code of the departure port
    - destination_port: The name or code of the arrival port
-3. The tool will:
+
+The historical check is mandatory for all negative route results, NOT optional. The tool will:
    - Try both directions (origin→destination and destination→origin)
    - Identify when routes operated in the past or are scheduled for the future
    - Provide details about when the route first appeared in schedules
    - Give date ranges and seasonal information
 
-4. When responding to users about historical data:
-   - Clearly indicate that no current routes exist but historical data was found
+When no current route exists:
+   - NEVER respond with just "no route exists" or similar negative answers
+   - ALWAYS check historical data BEFORE giving a final answer
+   - Begin your response with: "I couldn't find any current ferry routes from [Origin] to [Destination]. Let me check the historical data..."
+   - Then call the historical data tool and incorporate its results
    - Explain when the route operated previously or is scheduled for the future
    - Suggest checking back later if the route operated seasonally in similar periods
-   - Recommend alternative routes if appropriate
 
 Example response when no current route exists:
-"I couldn't find any current ferry routes from Naxos to Kos. However, according to historical data, this route operated seasonally from June 15 to September 20 last year. It typically appears in schedules starting in April. You might want to check again in a few weeks to see if this route becomes available for the summer season."
+"I couldn't find any current ferry routes from Naxos to Kos. Let me check the historical data...
+
+According to historical records, this route operated seasonally from June 15 to September 20 last year. It typically appears in schedules starting in April. You might want to check again in a few weeks to see if this route becomes available for the summer season."
 
 ____________________________________________
 
