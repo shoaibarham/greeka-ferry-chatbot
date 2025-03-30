@@ -1,41 +1,23 @@
 import os
 import logging
+import sqlite3
 from datetime import datetime
 import subprocess
 import threading
 import time
 
 from flask import Flask, render_template, request, jsonify, session
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import DeclarativeBase
 
 # Initialize logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Create Flask app
-class Base(DeclarativeBase):
-    pass
-
-db = SQLAlchemy(model_class=Base)
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key")
 
-# Configure database
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///ferry_data.db")
-app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-    "pool_recycle": 300,
-    "pool_pre_ping": True,
-}
-
-# Initialize database
-db.init_app(app)
-
-# Initialize app context
-with app.app_context():
-    # Import models after initializing app
-    from models import FerryRoute, FerryCompany, Port, Vessel, Schedule, Accommodation
-    db.create_all()
+# Database path
+DB_PATH = 'gtfs.db'
 
 # Initialize ferry agent (outside the routes to avoid recreation on each request)
 ferry_agent = None
@@ -109,11 +91,10 @@ def update_data():
     Endpoint to trigger data update process.
     This would typically be called by a scheduled task.
     """
-    from data_processor import update_ferry_data
-    
     try:
+        import sqlite_loader
         source_file = request.json.get("source_file", "attached_assets/GTFS_data_v5.json")
-        result = update_ferry_data(source_file)
+        result = sqlite_loader.load_data(source_file)
         return jsonify({"success": True, "message": result})
     except Exception as e:
         logger.error(f"Error updating ferry data: {str(e)}", exc_info=True)
@@ -145,15 +126,25 @@ def get_ports():
 def database_status():
     """Get the status of the database."""
     try:
-        # Count tables and rows
+        # Count routes
         table_counts = {}
-        with app.app_context():
-            table_counts["ferry_companies"] = FerryCompany.query.count()
-            table_counts["ports"] = Port.query.count()
-            table_counts["vessels"] = Vessel.query.count()
-            table_counts["ferry_routes"] = FerryRoute.query.count()
-            table_counts["schedules"] = Schedule.query.count()
-            table_counts["accommodations"] = Accommodation.query.count()
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        # Get counts from each table
+        cursor.execute("SELECT COUNT(*) FROM routes")
+        table_counts["routes"] = cursor.fetchone()[0]
+        
+        cursor.execute("SELECT COUNT(*) FROM dates_and_vessels")
+        table_counts["dates_and_vessels"] = cursor.fetchone()[0]
+        
+        cursor.execute("SELECT COUNT(*) FROM vessels_and_indicative_prices")
+        table_counts["vessels_and_prices"] = cursor.fetchone()[0]
+        
+        cursor.execute("SELECT COUNT(*) FROM vessels_and_accommodation_prices")
+        table_counts["accommodation_prices"] = cursor.fetchone()[0]
+        
+        conn.close()
             
         # Get last update time (if available)
         last_update = None
@@ -163,7 +154,7 @@ def database_status():
                 with open(log_file, "r") as f:
                     lines = f.readlines()
                     for line in reversed(lines):
-                        if "successfully" in line.lower() and "update" in line.lower():
+                        if "successfully" in line.lower() and "data" in line.lower():
                             last_update = line.split(" - ")[0]
                             break
             except Exception as e:

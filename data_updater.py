@@ -11,8 +11,8 @@ import argparse
 import requests
 from datetime import datetime
 
-from config import DEFAULT_DATA_PATH
-from data_processor import update_ferry_data
+DEFAULT_DATA_PATH = "attached_assets/GTFS_data_v5.json"
+from sqlite_loader import load_data
 
 # Set up logging
 logging.basicConfig(
@@ -98,7 +98,7 @@ def main():
         # Update database if not download-only
         if not args.download_only:
             logger.info(f"Updating database with data from {data_path}")
-            result = update_ferry_data(data_path)
+            result = load_data(data_path)
             logger.info(result)
         else:
             logger.info("Download-only mode. Database not updated.")

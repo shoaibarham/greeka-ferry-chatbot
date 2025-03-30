@@ -122,18 +122,22 @@ class FerryAgent:
             if port_name_or_code:
                 # Search for a specific port
                 query = """
-                SELECT code, name FROM ports
-                WHERE LOWER(code) = LOWER(:port_code) OR LOWER(name) LIKE LOWER(:port_name)
+                SELECT DISTINCT origin_port_code as code, origin_port_name as name FROM routes
+                WHERE LOWER(origin_port_code) = LOWER(?) OR LOWER(origin_port_name) LIKE LOWER(?)
+                UNION
+                SELECT DISTINCT destination_port_code as code, destination_port_name as name FROM routes
+                WHERE LOWER(destination_port_code) = LOWER(?) OR LOWER(destination_port_name) LIKE LOWER(?)
                 ORDER BY name
                 """
-                results = execute_query(query, {
-                    "port_code": port_name_or_code,
-                    "port_name": f"%{port_name_or_code}%"
-                })
+                search_pattern = f"%{port_name_or_code}%"
+                results = execute_query(query, 
+                                       (port_name_or_code, search_pattern, port_name_or_code, search_pattern))
             else:
                 # Get all ports
                 query = """
-                SELECT code, name FROM ports
+                SELECT DISTINCT origin_port_code as code, origin_port_name as name FROM routes
+                UNION
+                SELECT DISTINCT destination_port_code as code, destination_port_name as name FROM routes
                 ORDER BY name
                 """
                 results = execute_query(query)
@@ -191,25 +195,22 @@ class FerryAgent:
         Retrieves the database schema for reference.
         """
         try:
-            # Query for tables in PostgreSQL
+            # For SQLite, we need to use a different approach to get table information
             tables_query = """
-            SELECT table_name FROM information_schema.tables 
-            WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name NOT LIKE 'sqlite_%'
+            ORDER BY name
             """
             tables = execute_query(tables_query)
             
             schema_info = []
             for table in tables:
                 table_name = table[0]
-                # Get columns for each table
-                columns_query = f"""
-                SELECT column_name, data_type 
-                FROM information_schema.columns 
-                WHERE table_name = '{table_name}'
-                """
+                # Get columns for the table using PRAGMA
+                columns_query = f"PRAGMA table_info({table_name})"
                 columns = execute_query(columns_query)
                 
-                column_info = [f"  - {col[0]} ({col[1]})" for col in columns]
+                column_info = [f"  - {col[1]} ({col[2]})" for col in columns]  # col[1] is name, col[2] is type
                 schema_info.append(f"Table: {table_name}")
                 schema_info.extend(column_info)
                 schema_info.append("")  # Add blank line between tables
