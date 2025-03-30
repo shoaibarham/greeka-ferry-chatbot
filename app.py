@@ -16,11 +16,36 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key")
 
-# Database path
+# Database paths
 DB_PATH = 'gtfs.db'
+HISTORICAL_DB_PATH = 'previous_db.db'
 
 # Initialize ferry agent (outside the routes to avoid recreation on each request)
 ferry_agent = None
+
+def initialize_databases():
+    """Initialize both the main and historical databases if needed."""
+    # Initialize main database
+    if not os.path.exists(DB_PATH) or os.path.getsize(DB_PATH) == 0:
+        logger.info("Initializing main ferry database...")
+        try:
+            import initialize_data
+            initialize_data.main()
+            logger.info("Main database initialization complete")
+        except Exception as e:
+            logger.error(f"Failed to initialize main database: {str(e)}")
+            raise
+    
+    # Initialize historical database
+    if not os.path.exists(HISTORICAL_DB_PATH) or os.path.getsize(HISTORICAL_DB_PATH) == 0:
+        logger.info("Initializing historical ferry database...")
+        try:
+            import initialize_historical_data
+            initialize_historical_data.main()
+            logger.info("Historical database initialization complete")
+        except Exception as e:
+            logger.error(f"Failed to initialize historical database: {str(e)}")
+            raise
 
 def initialize_agent():
     """Initialize the ferry agent if not already initialized."""
@@ -28,6 +53,9 @@ def initialize_agent():
     if ferry_agent is None:
         from ferry_agent import FerryAgent
         try:
+            # Make sure databases are initialized first
+            initialize_databases()
+            
             ferry_agent = FerryAgent()
             logger.info("Ferry agent initialized successfully")
         except Exception as e:
@@ -126,7 +154,7 @@ def get_ports():
 def database_status():
     """Get the status of the database."""
     try:
-        # Count routes
+        # Count entries in main database
         table_counts = {}
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
@@ -145,6 +173,24 @@ def database_status():
         table_counts["accommodation_prices"] = cursor.fetchone()[0]
         
         conn.close()
+        
+        # Count entries in historical database
+        historical_counts = {}
+        if os.path.exists(HISTORICAL_DB_PATH):
+            conn = sqlite3.connect(HISTORICAL_DB_PATH)
+            cursor = conn.cursor()
+            
+            # Get the count of historical date ranges
+            try:
+                cursor.execute("SELECT COUNT(*) FROM historical_date_ranges")
+                historical_counts["historical_date_ranges"] = cursor.fetchone()[0]
+            except sqlite3.OperationalError as e:
+                logger.warning(f"Unable to count historical routes: {str(e)}")
+                historical_counts["historical_date_ranges"] = 0
+                
+            conn.close()
+        else:
+            historical_counts["historical_date_ranges"] = 0
             
         # Get last update time (if available)
         last_update = None
@@ -163,6 +209,7 @@ def database_status():
         return jsonify({
             "status": "online",
             "table_counts": table_counts,
+            "historical_counts": historical_counts,
             "last_update": last_update
         })
     except Exception as e:

@@ -71,30 +71,27 @@ end_date: Last recorded operational date of the route (YYYY-MM-DD).
 
 appear_date: Date when the route first appeared in the schedule (YYYY-MM-DD).
 
-##2. Handling Historical Data for Unavailable Routes
+## 2. Handling Historical Data for Unavailable Routes
 If a requested ferry route is unavailable in the current schedule:
 
-Query the historical_date_ranges table in previous_db.db for the same origin-destination pair.
+1. Use the `check_historical_routes` tool to query historical data between the origin and destination
+2. The tool checks the `historical_date_ranges` table in `previous_db.db` using provided parameters:
+   - origin_port: The name or code of the departure port
+   - destination_port: The name or code of the arrival port
+3. The tool will:
+   - Try both directions (origin→destination and destination→origin)
+   - Identify when routes operated in the past or are scheduled for the future
+   - Provide details about when the route first appeared in schedules
+   - Give date ranges and seasonal information
 
-Analyze seasonal trends using appear_date, start_date, and end_date.
+4. When responding to users about historical data:
+   - Clearly indicate that no current routes exist but historical data was found
+   - Explain when the route operated previously or is scheduled for the future
+   - Suggest checking back later if the route operated seasonally in similar periods
+   - Recommend alternative routes if appropriate
 
-Estimate likelihood of the route based on past availability patterns.
-
-
-3. **Example SQL Query for Historical Data**:
-```sql
--- This query should be executed on the `previous_db.db` database
-SELECT 
-    appear_date,
-    MIN(start_date) AS first_start,
-    MAX(end_date) AS last_end,
-    COUNT(*) AS seasons_count
-FROM historical_date_ranges
-WHERE 
-    LOWER(origin_code) = LOWER('{origin_code}') AND
-    LOWER(destination_code) = LOWER('{destination_code}')
-GROUP BY strftime('%m', appear_date);
--- Note: This query should be executed on the `previous_db.sqlite` database.
+Example response when no current route exists:
+"I couldn't find any current ferry routes from Naxos to Kos. However, according to historical data, this route operated seasonally from June 15 to September 20 last year. It typically appears in schedules starting in April. You might want to check again in a few weeks to see if this route becomes available for the summer season."
 
 ____________________________________________
 

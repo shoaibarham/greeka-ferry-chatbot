@@ -1,5 +1,6 @@
 import os
 import logging
+import sqlite3
 from typing import Dict, List, Any, Optional, Union
 from datetime import datetime
 
@@ -56,6 +57,13 @@ class FerryAgent:
             func=self.get_port_information,
             description="Get information about ports including codes and names."
         )
+        
+        # Define tool for checking historical data
+        self.historical_data_tool = Tool(
+            name="check_historical_routes",
+            func=self.check_historical_routes,
+            description="Check if a route was available in historical data when it's not found in current schedules."
+        )
 
         # Define the prompt template for the agent
         self.prompt = ChatPromptTemplate.from_messages([
@@ -68,14 +76,14 @@ class FerryAgent:
         # Create the agent using the language model and tools
         self.agent = create_tool_calling_agent(
             llm=self.llm,
-            tools=[self.db_query_tool, self.port_info_tool],
+            tools=[self.db_query_tool, self.port_info_tool, self.historical_data_tool],
             prompt=self.prompt
         )
 
         # Create the agent executor to handle queries
         self.agent_executor = AgentExecutor(
             agent=self.agent,
-            tools=[self.db_query_tool, self.port_info_tool],
+            tools=[self.db_query_tool, self.port_info_tool, self.historical_data_tool],
             verbose=True
         )
 
@@ -210,6 +218,84 @@ class FerryAgent:
             logger.error(f"Error processing query: {str(e)}")
             logger.error(f"Traceback: {traceback.format_exc()}")
             return "I'm sorry, I encountered an error while processing your request. Please try asking your question in a different way or try another query about ferry routes or schedules."
+
+    def check_historical_routes(self, origin_port: str, destination_port: str) -> str:
+        """
+        Check historical data for routes between the given ports when current routes aren't found.
+        
+        Args:
+            origin_port: The name or code of the origin port
+            destination_port: The name or code of the destination port
+            
+        Returns:
+            Information about historical routes if found, or a message indicating no historical data
+        """
+        try:
+            logger.info(f"Checking historical routes from {origin_port} to {destination_port}")
+            
+            # Connect to the historical database
+            db_path = 'previous_db.db'
+            if not os.path.exists(db_path):
+                return "Historical database does not exist. Unable to check past routes."
+            
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            
+            # Search in the historical_date_ranges table with case-insensitive comparison
+            query = """
+            SELECT 
+                origin_name, destination_name, 
+                MIN(start_date) AS earliest_start,
+                MAX(end_date) AS latest_end, 
+                MIN(appear_date) AS first_appeared,
+                COUNT(*) AS data_points
+            FROM historical_date_ranges
+            WHERE 
+                (LOWER(origin_code) = LOWER(?) OR LOWER(origin_name) LIKE LOWER(?)) AND
+                (LOWER(destination_code) = LOWER(?) OR LOWER(destination_name) LIKE LOWER(?))
+            GROUP BY origin_name, destination_name
+            """
+            
+            # Create search patterns
+            origin_pattern = f"%{origin_port}%"
+            destination_pattern = f"%{destination_port}%"
+            
+            cursor.execute(query, (origin_port, origin_pattern, destination_port, destination_pattern))
+            results = cursor.fetchall()
+            
+            if not results or len(results) == 0:
+                # Try the reverse direction
+                cursor.execute(query, (destination_port, destination_pattern, origin_port, origin_pattern))
+                results = cursor.fetchall()
+                
+                if not results or len(results) == 0:
+                    return f"No historical routes found between {origin_port} and {destination_port} in either direction."
+            
+            # Format the results
+            from datetime import datetime
+            current_date = datetime.now().strftime("%Y-%m-%d")
+            
+            historical_info = []
+            for row in results:
+                origin, destination, earliest_start, latest_end, first_appeared, count = row
+                
+                # Check if the route is entirely in the past, future, or spans the current date
+                message = ""
+                if latest_end < current_date:
+                    message = f"This route operated in the past from {earliest_start} to {latest_end} (last appeared: {first_appeared}). It is not currently operating."
+                elif earliest_start > current_date:
+                    message = f"This route is scheduled to operate in the future from {earliest_start} to {latest_end} (first appeared in schedule: {first_appeared})."
+                else:
+                    message = f"This route operates seasonally and has dates from {earliest_start} to {latest_end} (first appeared: {first_appeared})."
+                
+                historical_info.append(f"Historical route found from {origin} to {destination}. {message}")
+            
+            conn.close()
+            return "\n\n".join(historical_info)
+            
+        except Exception as e:
+            logger.error(f"Error checking historical routes: {str(e)}")
+            return f"Error searching historical routes: {str(e)}"
 
     def get_db_schema(self) -> str:
         """
