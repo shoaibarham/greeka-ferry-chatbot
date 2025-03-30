@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ferry Data Admin - Greek Ferry Chatbot</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    
+    <!-- Roboto font -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container mt-4 mb-4">
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h2 class="mb-0"><i class="fas fa-cogs me-2"></i> Greek Ferry Data Administration</h2>
+                            <a href="/" class="btn btn-light btn-sm">
+                                <i class="fas fa-arrow-left me-2"></i> Back to Chatbot
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i> This admin panel shows the current status of the ferry database and allows you to trigger data updates.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <h4 class="mb-0"><i class="fas fa-database me-2"></i> Database Status</h4>
+                    </div>
+                    <div class="card-body" id="database-status">
+                        <div class="d-flex justify-content-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <h4 class="mb-0"><i class="fas fa-history me-2"></i> Update History</h4>
+                    </div>
+                    <div class="card-body">
+                        <p id="last-update">Checking update history...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <h4 class="mb-0"><i class="fas fa-sync-alt me-2"></i> Manual Data Update</h4>
+                    </div>
+                    <div class="card-body">
+                        <p>Trigger a manual update of the ferry data from the source file.</p>
+                        
+                        <form id="update-form">
+                            <div class="mb-3">
+                                <label for="source-file" class="form-label">Source File</label>
+                                <input type="text" class="form-control" id="source-file" value="attached_assets/GTFS_data_v5.json">
+                                <div class="form-text">Path to the data file to use for the update.</div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-sync-alt me-2"></i> Update Database
+                            </button>
+                        </form>
+                        
+                        <div id="update-result" class="alert mt-3 d-none"></div>
+                    </div>
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-header bg-secondary text-white">
+                        <h4 class="mb-0"><i class="fas fa-clock me-2"></i> Scheduled Updates</h4>
+                    </div>
+                    <div class="card-body">
+                        <p>Ferry data is automatically updated every day at 3:00 AM to ensure the information is always current.</p>
+                        
+                        <div class="alert alert-secondary">
+                            <h5><i class="fas fa-info-circle me-2"></i> Next Scheduled Update:</h5>
+                            <p id="next-update">Calculating...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- JavaScript -->
+    <script>
+        // Get database status on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchDatabaseStatus();
+            calculateNextUpdate();
+        });
+        
+        // Fetch database status
+        async function fetchDatabaseStatus() {
+            try {
+                const response = await fetch('/api/database-status');
+                const data = await response.json();
+                
+                if (data.status === 'online') {
+                    // Display table counts
+                    const statusHtml = `
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Table</th>
+                                        <th>Record Count</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${Object.entries(data.table_counts).map(([table, count]) => `
+                                        <tr>
+                                            <td>${formatTableName(table)}</td>
+                                            <td>${count.toLocaleString()}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                    
+                    document.getElementById('database-status').innerHTML = statusHtml;
+                    
+                    // Update last update info
+                    if (data.last_update) {
+                        document.getElementById('last-update').textContent = `Last update: ${data.last_update}`;
+                    } else {
+                        document.getElementById('last-update').textContent = 'No update history found.';
+                    }
+                } else {
+                    document.getElementById('database-status').innerHTML = `
+                        <div class="alert alert-danger">
+                            Database status: Error<br>
+                            ${data.error || 'Unknown error'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('database-status').innerHTML = `
+                    <div class="alert alert-danger">
+                        Failed to fetch database status: ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        // Format table name
+        function formatTableName(tableName) {
+            return tableName
+                .split('_')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
+        }
+        
+        // Calculate next update time
+        function calculateNextUpdate() {
+            const now = new Date();
+            const nextUpdate = new Date();
+            
+            // Set to 3 AM
+            nextUpdate.setHours(3, 0, 0, 0);
+            
+            // If it's already past 3 AM, set to tomorrow
+            if (now > nextUpdate) {
+                nextUpdate.setDate(nextUpdate.getDate() + 1);
+            }
+            
+            // Calculate time difference
+            const diffMs = nextUpdate - now;
+            const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            
+            document.getElementById('next-update').textContent = `
+                ${nextUpdate.toLocaleString()} (in ${diffHrs} hours and ${diffMins} minutes)
+            `;
+        }
+        
+        // Handle manual update form submission
+        document.getElementById('update-form').addEventListener('submit', async (event) => {
+            event.preventDefault();
+            
+            const sourceFile = document.getElementById('source-file').value;
+            const updateResult = document.getElementById('update-result');
+            
+            updateResult.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <div class="spinner-border text-primary me-2" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <span>Updating database... This may take a few minutes.</span>
+                </div>
+            `;
+            updateResult.classList.remove('d-none', 'alert-success', 'alert-danger');
+            updateResult.classList.add('alert-info');
+            
+            try {
+                const response = await fetch('/api/update_data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ source_file: sourceFile })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateResult.textContent = data.message;
+                    updateResult.classList.remove('alert-info', 'alert-danger');
+                    updateResult.classList.add('alert-success');
+                    
+                    // Refresh database status
+                    fetchDatabaseStatus();
+                } else {
+                    updateResult.textContent = `Error: ${data.error} - ${data.details}`;
+                    updateResult.classList.remove('alert-info', 'alert-success');
+                    updateResult.classList.add('alert-danger');
+                }
+            } catch (error) {
+                updateResult.textContent = `Failed to update database: ${error.message}`;
+                updateResult.classList.remove('alert-info', 'alert-success');
+                updateResult.classList.add('alert-danger');
+            }
+        });
+    </script>
+</body>
+</html>

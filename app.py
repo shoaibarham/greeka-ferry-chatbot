@@ -1,6 +1,9 @@
 import os
 import logging
 from datetime import datetime
+import subprocess
+import threading
+import time
 
 from flask import Flask, render_template, request, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
@@ -34,26 +37,46 @@ with app.app_context():
     from models import FerryRoute, FerryCompany, Port, Vessel, Schedule, Accommodation
     db.create_all()
 
+# Initialize ferry agent (outside the routes to avoid recreation on each request)
+ferry_agent = None
+
+def initialize_agent():
+    """Initialize the ferry agent if not already initialized."""
+    global ferry_agent
+    if ferry_agent is None:
+        from ferry_agent import FerryAgent
+        try:
+            ferry_agent = FerryAgent()
+            logger.info("Ferry agent initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize ferry agent: {str(e)}")
+            raise
+
+# Initialize the ferry agent at app startup
+initialize_agent()
+
 # Routes
 @app.route("/")
 def index():
     """Render the main page of the ferry chatbot application."""
     return render_template("index.html")
 
+@app.route("/admin")
+def admin():
+    """Render the admin panel for managing ferry data."""
+    return render_template("admin.html")
+
 @app.route("/api/chat", methods=["POST"])
 def chat():
     """
     Process user queries and return AI-generated responses
-    using the Gemini model and LangChain agents.
+    using the Gemini model and FerryAgent.
     """
-    from config import GEMINI_API_KEY
-    from langchain.callbacks.manager import CallbackManager
-    from langchain_google_genai import ChatGoogleGenerativeAI
-    from langchain.agents import initialize_agent, AgentType
-    from prompts.system_prompt import get_system_prompt
-    from tools.ferry_tools import get_tools
-
     try:
+        # Make sure agent is initialized
+        if ferry_agent is None:
+            initialize_agent()
+            
         # Get user message
         data = request.json
         user_message = data.get("message", "")
@@ -64,51 +87,12 @@ def chat():
             conversation_id = datetime.now().strftime("%Y%m%d%H%M%S")
             session[conversation_id] = []
         
-        conversation_history = session.get(conversation_id, [])
-        
-        # Set up the LLM with Gemini
-        llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-pro",
-            temperature=0,
-            max_tokens=None,
-            timeout=None,
-            max_retries=2,
-            google_api_key=GEMINI_API_KEY,
-            convert_system_message_to_human=True
-        )
-        
-        # Set up tools for structured data retrieval
-        tools = get_tools()
-        
-        # Initialize the agent
-        agent = initialize_agent(
-            tools=tools,
-            llm=llm,
-            agent=AgentType.STRUCTURED_CHAT_ZERO_SHOT_REACT_DESCRIPTION,
-            verbose=True
-        )
-        
-        # Get system prompt
-        system_prompt = get_system_prompt()
-        
-        # Create input for agent
-        agent_input = {
-            "input": user_message,
-            "chat_history": conversation_history,
-            "system_prompt": system_prompt
-        }
-        
-        # Execute agent to get response
-        result = agent.run(agent_input)
-        
-        # Update conversation history
-        conversation_history.append({"role": "user", "content": user_message})
-        conversation_history.append({"role": "assistant", "content": result})
-        session[conversation_id] = conversation_history
+        # Process the query with ferry agent
+        response = ferry_agent.query(user_message, conversation_id)
         
         # Return response to frontend
         return jsonify({
-            "response": result,
+            "response": response,
             "conversation_id": conversation_id
         })
     
@@ -128,7 +112,7 @@ def update_data():
     from data_processor import update_ferry_data
     
     try:
-        source_file = request.json.get("source_file", "GTFS_data_v5.json")
+        source_file = request.json.get("source_file", "attached_assets/GTFS_data_v5.json")
         result = update_ferry_data(source_file)
         return jsonify({"success": True, "message": result})
     except Exception as e:
@@ -138,6 +122,86 @@ def update_data():
             "error": "Failed to update ferry data",
             "details": str(e)
         }), 500
+
+@app.route("/api/ports", methods=["GET"])
+def get_ports():
+    """Get a list of all available ports."""
+    try:
+        search_term = request.args.get("search", "")
+        
+        if ferry_agent:
+            port_info = ferry_agent.get_port_information(search_term)
+            # Split the port info string into a list of ports
+            ports = [{"code": line.split(":")[0].strip(), "name": line.split(":")[1].strip()} 
+                     for line in port_info.split("\n") if ":" in line]
+            return jsonify({"ports": ports})
+        else:
+            return jsonify({"error": "Ferry agent not initialized"}), 500
+    except Exception as e:
+        logger.error(f"Error retrieving ports: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/database-status", methods=["GET"])
+def database_status():
+    """Get the status of the database."""
+    try:
+        # Count tables and rows
+        table_counts = {}
+        with app.app_context():
+            table_counts["ferry_companies"] = FerryCompany.query.count()
+            table_counts["ports"] = Port.query.count()
+            table_counts["vessels"] = Vessel.query.count()
+            table_counts["ferry_routes"] = FerryRoute.query.count()
+            table_counts["schedules"] = Schedule.query.count()
+            table_counts["accommodations"] = Accommodation.query.count()
+            
+        # Get last update time (if available)
+        last_update = None
+        log_file = "data_updates.log"
+        if os.path.exists(log_file):
+            try:
+                with open(log_file, "r") as f:
+                    lines = f.readlines()
+                    for line in reversed(lines):
+                        if "successfully" in line.lower() and "update" in line.lower():
+                            last_update = line.split(" - ")[0]
+                            break
+            except Exception as e:
+                logger.error(f"Error reading update log: {str(e)}")
+        
+        return jsonify({
+            "status": "online",
+            "table_counts": table_counts,
+            "last_update": last_update
+        })
+    except Exception as e:
+        logger.error(f"Error checking database status: {str(e)}")
+        return jsonify({
+            "status": "error",
+            "error": str(e)
+        }), 500
+
+def run_scheduled_update():
+    """Run scheduled updates for ferry data."""
+    while True:
+        try:
+            # Run update at 3 AM
+            current_hour = datetime.now().hour
+            if current_hour == 3:
+                logger.info("Running scheduled ferry data update")
+                subprocess.run(["python", "data_updater.py"], check=True)
+                # Sleep for 1 hour after running to avoid multiple executions
+                time.sleep(3600)
+            else:
+                # Check every 15 minutes
+                time.sleep(900)
+        except Exception as e:
+            logger.error(f"Error in scheduled update: {str(e)}")
+            time.sleep(900)  # Sleep for 15 minutes on error
+
+# Start update scheduler thread
+update_thread = threading.Thread(target=run_scheduled_update, daemon=True)
+update_thread.start()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
