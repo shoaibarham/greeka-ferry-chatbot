@@ -191,9 +191,10 @@ class FerryAgent:
         Retrieves the database schema for reference.
         """
         try:
-            # Query for tables
+            # Query for tables in PostgreSQL
             tables_query = """
-            SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'
+            SELECT table_name FROM information_schema.tables 
+            WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
             """
             tables = execute_query(tables_query)
             
@@ -201,10 +202,14 @@ class FerryAgent:
             for table in tables:
                 table_name = table[0]
                 # Get columns for each table
-                columns_query = f"PRAGMA table_info({table_name});"
+                columns_query = f"""
+                SELECT column_name, data_type 
+                FROM information_schema.columns 
+                WHERE table_name = '{table_name}'
+                """
                 columns = execute_query(columns_query)
                 
-                column_info = [f"  - {col[1]} ({col[2]})" for col in columns]
+                column_info = [f"  - {col[0]} ({col[1]})" for col in columns]
                 schema_info.append(f"Table: {table_name}")
                 schema_info.extend(column_info)
                 schema_info.append("")  # Add blank line between tables

@@ -7,7 +7,7 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///ferry_data.db")
 
 # Default data file path
-DEFAULT_DATA_PATH = "attached_assets/GTFS_data_v5.json"
+DEFAULT_DATA_PATH = "./attached_assets/GTFS_data_v5.json"
 
 # Maximum conversation history to maintain
 MAX_CONVERSATION_HISTORY = 10

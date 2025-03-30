@@ -46,12 +46,15 @@ def update_ferry_data(file_path: str = DEFAULT_DATA_PATH) -> str:
         try:
             # Clear existing data (in reverse order of dependencies)
             logger.info("Clearing existing data...")
-            Accommodation.query.delete()
-            Schedule.query.delete()
-            FerryRoute.query.delete()
-            Vessel.query.delete()
-            Port.query.delete()
-            FerryCompany.query.delete()
+            
+            # Use SQL to clear data
+            db.session.execute(db.text("DELETE FROM accommodations"))
+            db.session.execute(db.text("DELETE FROM schedules"))
+            db.session.execute(db.text("DELETE FROM ferry_routes"))
+            db.session.execute(db.text("DELETE FROM vessels"))
+            db.session.execute(db.text("DELETE FROM ports"))
+            db.session.execute(db.text("DELETE FROM ferry_companies"))
+            db.session.commit()
             
             # Load new data
             logger.info(f"Loading ferry data from {file_path}...")
