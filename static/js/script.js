@@ -120,13 +120,19 @@ function addMessage(text, sender) {
 
 // Function to format message content with line breaks and ferry details
 function formatMessageContent(text) {
+  // Add a message-content wrapper div
+  let content = `<div class="message-content">`;
+  
   // Convert line breaks to <br> tags
   let formattedText = text.replace(/\n/g, '<br>');
   
   // Enhance ferry route information
   formattedText = formatFerryRoutes(formattedText);
   
-  return formattedText;
+  // Close the wrapper div
+  content += formattedText + `</div>`;
+  
+  return content;
 }
 
 // Function to add loading indicator
@@ -279,7 +285,29 @@ function formatSingleFerryRoute(routeLines) {
 
 // Function to format the response text for better readability
 function formatResponseText(text) {
-  // This is a placeholder for any additional text formatting
-  // needed before applying the HTML formatting
-  return text;
+  if (!text) return "Sorry, I couldn't generate a response. Please try again.";
+  
+  // Handle markdown-style formatting for better readability
+  let formatted = text;
+  
+  // Bold text (** or __)
+  formatted = formatted.replace(/(\*\*|__)(.*?)\1/g, '<strong>$2</strong>');
+  
+  // Italic text (* or _)
+  formatted = formatted.replace(/(\*|_)(.*?)\1/g, '<em>$2</em>');
+  
+  // Lists
+  formatted = formatted.replace(/^\s*\d+\.\s+(.*?)(?=\n|$)/gm, '<li>$1</li>');
+  formatted = formatted.replace(/^\s*\*\s+(.*?)(?=\n|$)/gm, '<li>$1</li>');
+  
+  // Wrap consecutive <li> elements with <ul> or <ol>
+  formatted = formatted.replace(/(<li>.*?<\/li>)(\s*\n\s*<li>.*?<\/li>)+/g, '<ul>$&</ul>');
+  
+  // Format code blocks
+  formatted = formatted.replace(/```(.*?)```/gs, '<pre><code>$1</code></pre>');
+  
+  // Format inline code
+  formatted = formatted.replace(/`([^`]+)`/g, '<code>$1</code>');
+  
+  return formatted;
 }
