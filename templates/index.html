@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Greek Ferry Chatbot</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    
+    <!-- Roboto font -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container mt-4 mb-4">
+        <div class="chat-container">
+            <div class="chat-header">
+                <h1><i class="fas fa-ship me-2"></i> Greek Ferry Chatbot</h1>
+                <p>Ask about ferry routes, schedules, and prices for Greek islands</p>
+            </div>
+            
+            <div class="chat-body">
+                <div id="messages" class="messages-container"></div>
+                
+                <div class="input-container">
+                    <input 
+                        type="text" 
+                        id="message-input" 
+                        class="message-input"
+                        placeholder="Ask about ferry routes, schedules, or prices..."
+                        aria-label="Type your message">
+                    
+                    <button id="send-button" class="send-button" aria-label="Send message">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Example Questions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-group">
+                                <li class="list-group-item">
+                                    <a href="#" class="example-question">
+                                        Is there a ferry from Milos to Kimolos on March 23, 2025?
+                                    </a>
+                                </li>
+                                <li class="list-group-item">
+                                    <a href="#" class="example-question">
+                                        What's the fastest way to get from Piraeus to Sifnos?
+                                    </a>
+                                </li>
+                                <li class="list-group-item">
+                                    <a href="#" class="example-question">
+                                        How much does it cost to go from Kimolos to Serifos?
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-group">
+                                <li class="list-group-item">
+                                    <a href="#" class="example-question">
+                                        I want to travel from Milos to Piraeus with a stop in Sifnos
+                                    </a>
+                                </li>
+                                <li class="list-group-item">
+                                    <a href="#" class="example-question">
+                                        What accommodation options are available on the ferry from Serifos to Piraeus?
+                                    </a>
+                                </li>
+                                <li class="list-group-item">
+                                    <a href="#" class="example-question">
+                                        When can I travel from Kimolos to Piraeus in June 2025?
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    
+    <script>
+        // Handle example question clicks
+        document.querySelectorAll('.example-question').forEach(el => {
+            el.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.getElementById('message-input').value = el.textContent.trim();
+                document.getElementById('send-button').click();
+            });
+        });
+    </script>
+</body>
+</html>
