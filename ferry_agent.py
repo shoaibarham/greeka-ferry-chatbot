@@ -328,7 +328,59 @@ class FerryAgent:
                     dict_str = str(param1)
                     logger.error(f"Failed to extract ports from complex dictionary: {dict_str}")
         
-        # Case 2: First parameter is a string (direct invocation)
+        # Case 2: First parameter is a string containing a key-value format (LangChain workaround)
+        elif isinstance(param1, str) and param1.find(':') > 0:
+            logger.info(f"Processing potential key-value string: {param1}")
+            
+            # Try format like "origin_port:Brindisi destination_port:Corfu"
+            if 'origin_port' in param1 and 'destination_port' in param1:
+                try:
+                    # Split on 'destination_port:'
+                    parts = param1.split('destination_port:')
+                    origin_part = parts[0].strip()
+                    destination_part = parts[1].strip()
+                    
+                    # Extract origin value by removing 'origin_port:'
+                    origin_port = origin_part.replace('origin_port:', '').strip()
+                    # Remove any trailing comma or whitespace from destination
+                    destination_port = destination_part.strip().strip(',')
+                    
+                    # Handle potential comma delimiter
+                    if origin_port.endswith(','):
+                        origin_port = origin_port[:-1].strip()
+                        
+                    logger.info(f"Extracted from key-value string: origin={origin_port}, destination={destination_port}")
+                except Exception as e:
+                    logger.error(f"Error parsing key-value string: {str(e)}")
+                    
+            # Try to handle any kind of colon-separated key-value format
+            if not origin_port or not destination_port:
+                try:
+                    # Split the string by spaces and look for key:value pairs
+                    parts = param1.split(' ')
+                    port_dict = {}
+                    
+                    for part in parts:
+                        if ':' in part:
+                            key_val = part.split(':')
+                            if len(key_val) == 2:
+                                key, val = key_val
+                                port_dict[key.strip()] = val.strip().strip(',')
+                    
+                    logger.info(f"Parsed key-value pairs: {port_dict}")
+                    
+                    # Look for origin/destination keys in various formats
+                    for key in port_dict:
+                        if 'origin' in key.lower():
+                            origin_port = port_dict[key]
+                        elif 'destination' in key.lower() or 'dest' in key.lower():
+                            destination_port = port_dict[key]
+                            
+                    logger.info(f"Extracted from key-value parsing: origin={origin_port}, destination={destination_port}")
+                except Exception as e:
+                    logger.error(f"Error in advanced key-value parsing: {str(e)}")
+        
+        # Case 3: First parameter is a string and second parameter is a string (direct invocation)
         elif isinstance(param1, str) and isinstance(param2, str):
             origin_port = param1
             destination_port = param2
