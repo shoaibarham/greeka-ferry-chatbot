@@ -249,20 +249,43 @@ class FerryAgent:
         Check historical data for routes between the given ports when current routes aren't found.
         
         Args:
-            origin_port: The name or code of the origin port
-            destination_port: The name or code of the destination port
+            origin_port: The name or code of the origin port, or a dictionary containing both ports
+            destination_port: The name or code of the destination port (not needed if origin_port is a dict)
             
         Returns:
             Information about historical routes if found, or a message indicating no historical data
         """
-        # If we received a dictionary instead of separate arguments, extract the values
-        if isinstance(origin_port, dict) and 'origin_port' in origin_port and 'destination_port' in origin_port:
-            destination_port = origin_port.get('destination_port')
-            origin_port = origin_port.get('origin_port')
+        # Enable debug logging for parameter inspection
+        logger.info(f"check_historical_routes received: origin_port={origin_port}, destination_port={destination_port}")
+        
+        # If origin_port is a dictionary, extract the port values from it
+        if isinstance(origin_port, dict):
+            logger.info(f"Extracting from dictionary: {origin_port}")
+            # Check for various possible key formats
+            if 'origin_port' in origin_port and 'destination_port' in origin_port:
+                destination_port = origin_port.get('destination_port')
+                origin_port = origin_port.get('origin_port')
+                logger.info(f"Extracted from keys 'origin_port'/'destination_port': {origin_port} to {destination_port}")
+            elif 'origin' in origin_port and 'destination' in origin_port:
+                destination_port = origin_port.get('destination')
+                origin_port = origin_port.get('origin')
+                logger.info(f"Extracted from keys 'origin'/'destination': {origin_port} to {destination_port}")
+            else:
+                # Try to find the keys regardless of exact naming
+                keys = list(origin_port.keys())
+                logger.info(f"Dictionary keys available: {keys}")
+                if len(keys) >= 2:
+                    # Just use the first two keys as origin and destination
+                    orig_dict = origin_port  # Save the original dict before we overwrite the variable
+                    origin_port = orig_dict.get(keys[0])
+                    destination_port = orig_dict.get(keys[1])
+                    logger.info(f"Extracted using first two keys: {origin_port} to {destination_port}")
         
         # Validate that we have both parameters
         if not origin_port or not destination_port:
-            return "Error: Both origin_port and destination_port must be provided to check historical routes."
+            error_msg = f"Error: Both origin_port and destination_port must be provided to check historical routes. Received: origin_port={origin_port}, destination_port={destination_port}"
+            logger.error(error_msg)
+            return error_msg
         try:
             logger.info(f"Checking historical routes from {origin_port} to {destination_port}")
             
