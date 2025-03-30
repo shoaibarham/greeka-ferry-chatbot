@@ -34,7 +34,13 @@ def execute_query(query_string, params=None):
                 cursor.execute(query_string)
                 
             results = cursor.fetchall()
-            return results
+            
+            # Convert sqlite3.Row objects to tuples for better compatibility
+            tuple_results = []
+            for row in results:
+                tuple_results.append(tuple(row))
+            
+            return tuple_results
     except sqlite3.Error as e:
         logger.error(f"Error executing query: {str(e)}")
         raise
