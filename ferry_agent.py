@@ -244,7 +244,7 @@ class FerryAgent:
             logger.error(f"Traceback: {traceback.format_exc()}")
             return "I'm sorry, I encountered an error while processing your request. Please try asking your question in a different way or try another query about ferry routes or schedules."
 
-    def check_historical_routes(self, origin_port: str, destination_port: str) -> str:
+    def check_historical_routes(self, origin_port: str = None, destination_port: str = None) -> str:
         """
         Check historical data for routes between the given ports when current routes aren't found.
         
@@ -255,6 +255,14 @@ class FerryAgent:
         Returns:
             Information about historical routes if found, or a message indicating no historical data
         """
+        # If we received a dictionary instead of separate arguments, extract the values
+        if isinstance(origin_port, dict) and 'origin_port' in origin_port and 'destination_port' in origin_port:
+            destination_port = origin_port.get('destination_port')
+            origin_port = origin_port.get('origin_port')
+        
+        # Validate that we have both parameters
+        if not origin_port or not destination_port:
+            return "Error: Both origin_port and destination_port must be provided to check historical routes."
         try:
             logger.info(f"Checking historical routes from {origin_port} to {destination_port}")
             
