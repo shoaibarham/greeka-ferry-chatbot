@@ -41,7 +41,8 @@ class FerryAgent:
             timeout=None,
             max_retries=2,
             google_api_key=self.api_key,
-            convert_system_message_to_human=True
+            # Don't use deprecated parameter
+            # convert_system_message_to_human=True
         )
 
         # Define the main database query tool
@@ -166,6 +167,10 @@ class FerryAgent:
         Returns:
             Agent's response
         """
+        # Check for empty input and return a helpful message
+        if not input_text or input_text.strip() == "":
+            return "I'm here to help with ferry information. Please ask me a question about Greek ferry routes, schedules, or prices."
+            
         # Initialize chat history for the session if it doesn't exist
         if session_id not in self.chat_histories:
             self.chat_histories[session_id] = []
@@ -188,7 +193,7 @@ class FerryAgent:
             
         except Exception as e:
             logger.error(f"Error processing query: {str(e)}")
-            return f"I'm sorry, I encountered an error while processing your request: {str(e)}"
+            return "I'm sorry, I encountered an error while processing your request. Please try asking your question in a different way or try another query about ferry routes or schedules."
 
     def get_db_schema(self) -> str:
         """
