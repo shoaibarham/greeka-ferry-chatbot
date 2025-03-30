@@ -48,7 +48,7 @@ def chat():
     """
     from config import GEMINI_API_KEY
     from langchain.callbacks.manager import CallbackManager
-    from langchain_community.chat_models import ChatGoogleGenerativeAI
+    from langchain_google_genai import ChatGoogleGenerativeAI
     from langchain.agents import initialize_agent, AgentType
     from prompts.system_prompt import get_system_prompt
     from tools.ferry_tools import get_tools
@@ -68,8 +68,11 @@ def chat():
         
         # Set up the LLM with Gemini
         llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash",
-            temperature=0.1,
+            model="gemini-1.5-pro",
+            temperature=0,
+            max_tokens=None,
+            timeout=None,
+            max_retries=2,
             google_api_key=GEMINI_API_KEY,
             convert_system_message_to_human=True
         )
