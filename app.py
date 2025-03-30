@@ -122,6 +122,11 @@ def index():
 def admin():
     """Render the admin panel for managing ferry data."""
     return render_template("admin.html")
+    
+@app.route("/api-status")
+def api_status():
+    """Render the API status check page."""
+    return render_template("api_status.html")
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
@@ -380,6 +385,71 @@ def get_ports():
         return jsonify({
             "error": "Failed to retrieve port information",
             "message": "There was an error processing your request. Please try again later."
+        }), 500
+
+@app.route("/api/gemini-status", methods=["GET"])
+def gemini_status():
+    """Check the status of the Gemini API connection."""
+    try:
+        import google.generativeai as genai
+        from config import GEMINI_API_KEY, MODEL_NAME
+        
+        if not GEMINI_API_KEY:
+            return jsonify({
+                "status": "error",
+                "message": "API key is not set. Please set GEMINI_API_KEY in environment variables."
+            }), 400
+        
+        # Log API key details (safely)
+        logger.info(f"API Key length: {len(GEMINI_API_KEY)}, prefix: {GEMINI_API_KEY[:4] if len(GEMINI_API_KEY) > 4 else 'too short'}")
+        
+        # Configure the Gemini API
+        genai.configure(api_key=GEMINI_API_KEY)
+        
+        # Get the model
+        try:
+            models = genai.list_models()
+            available_models = [model.name for model in models]
+            logger.info(f"Available models: {available_models}")
+            
+            model_match = False
+            for model in available_models:
+                if MODEL_NAME in model:
+                    model_match = True
+                    break
+                
+            # Attempt a simple generation to test the API connection
+            logger.info("Testing simple generation...")
+            response = genai.GenerativeModel("gemini-pro").generate_content("Hello")
+            logger.info(f"Test generation successful, response: {response.text[:50]}...")
+            
+            return jsonify({
+                "status": "success",
+                "available_models": available_models,
+                "model_match": model_match,
+                "test_response": response.text[:100] + "..."
+            })
+        
+        except Exception as e:
+            logger.error(f"Model error: {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            
+            return jsonify({
+                "status": "error",
+                "message": f"Error connecting to Gemini API: {str(e)}",
+                "details": traceback.format_exc()
+            }), 500
+    
+    except Exception as e:
+        logger.error(f"General error: {str(e)}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        
+        return jsonify({
+            "status": "error",
+            "message": f"Error initializing Gemini API: {str(e)}",
+            "details": traceback.format_exc()
         }), 500
 
 @app.route("/api/database-status", methods=["GET"])
