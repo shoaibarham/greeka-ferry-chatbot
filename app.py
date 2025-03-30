@@ -48,7 +48,7 @@ def chat():
     """
     from config import GEMINI_API_KEY
     from langchain.callbacks.manager import CallbackManager
-    from langchain.chat_models import ChatGoogleGenerativeAI
+    from langchain_community.chat_models import ChatGoogleGenerativeAI
     from langchain.agents import initialize_agent, AgentType
     from prompts.system_prompt import get_system_prompt
     from tools.ferry_tools import get_tools
