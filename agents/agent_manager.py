@@ -71,7 +71,11 @@ class AgentManager:
         """Lazy-load the route agent."""
         if self._route_agent is None:
             logger.info("Initializing Route Agent")
-            self._route_agent = RouteAgent()
+            try:
+                self._route_agent = RouteAgent()
+            except Exception as e:
+                logger.error(f"Failed to initialize Route Agent: {str(e)}")
+                raise RuntimeError(f"Could not initialize Route Agent: {str(e)}")
         return self._route_agent
     
     @property
@@ -79,7 +83,11 @@ class AgentManager:
         """Lazy-load the price agent."""
         if self._price_agent is None:
             logger.info("Initializing Price Agent")
-            self._price_agent = PriceAgent()
+            try:
+                self._price_agent = PriceAgent()
+            except Exception as e:
+                logger.error(f"Failed to initialize Price Agent: {str(e)}")
+                raise RuntimeError(f"Could not initialize Price Agent: {str(e)}")
         return self._price_agent
     
     @property
@@ -87,7 +95,11 @@ class AgentManager:
         """Lazy-load the schedule agent."""
         if self._schedule_agent is None:
             logger.info("Initializing Schedule Agent")
-            self._schedule_agent = ScheduleAgent()
+            try:
+                self._schedule_agent = ScheduleAgent()
+            except Exception as e:
+                logger.error(f"Failed to initialize Schedule Agent: {str(e)}")
+                raise RuntimeError(f"Could not initialize Schedule Agent: {str(e)}")
         return self._schedule_agent
     
     @property
@@ -95,7 +107,11 @@ class AgentManager:
         """Lazy-load the travel agent."""
         if self._travel_agent is None:
             logger.info("Initializing Travel Agent")
-            self._travel_agent = TravelAgent()
+            try:
+                self._travel_agent = TravelAgent()
+            except Exception as e:
+                logger.error(f"Failed to initialize Travel Agent: {str(e)}")
+                raise RuntimeError(f"Could not initialize Travel Agent: {str(e)}")
         return self._travel_agent
     
     def categorize_query(self, query_text: str) -> str:
@@ -134,37 +150,46 @@ class AgentManager:
         """
         logger.info(f"Processing query: '{query_text}' (session: {session_id})")
         
-        # Categorize the query
-        category = self.categorize_query(query_text)
-        
-        # Route to the appropriate agent
-        if category == 'route':
-            logger.info("Routing to Route Agent")
-            return self.route_agent.query(query_text, session_id)
-        elif category == 'price':
-            logger.info("Routing to Price Agent")
-            return self.price_agent.query(query_text, session_id)
-        elif category == 'schedule':
-            logger.info("Routing to Schedule Agent")
-            return self.schedule_agent.query(query_text, session_id)
-        elif category == 'travel':
-            logger.info("Routing to Travel Agent")
-            return self.travel_agent.query(query_text, session_id)
-        else:
-            # For general queries, try to find the most appropriate agent based on keywords
-            if any(word in query_text.lower() for word in ['cheapest', 'price', 'cost', 'fare', 'ticket', 'expensive']):
-                logger.info("Routing general query to Price Agent based on keywords")
-                return self.price_agent.query(query_text, session_id)
-            elif any(word in query_text.lower() for word in ['time', 'schedule', 'departure', 'arrival', 'when', 'fastest']):
-                logger.info("Routing general query to Schedule Agent based on keywords")
-                return self.schedule_agent.query(query_text, session_id)
-            elif any(word in query_text.lower() for word in ['island', 'vacation', 'holiday', 'itinerary', 'trip', 'visit']):
-                logger.info("Routing general query to Travel Agent based on keywords")
-                return self.travel_agent.query(query_text, session_id)
-            else:
-                # Default to route agent for general transportation queries
-                logger.info("Routing general query to Route Agent (default)")
-                return self.route_agent.query(query_text, session_id)
+        try:
+            # Categorize the query
+            category = self.categorize_query(query_text)
+            
+            # Route to the appropriate agent
+            try:
+                if category == 'route':
+                    logger.info("Routing to Route Agent")
+                    return self.route_agent.query(query_text, session_id)
+                elif category == 'price':
+                    logger.info("Routing to Price Agent")
+                    return self.price_agent.query(query_text, session_id)
+                elif category == 'schedule':
+                    logger.info("Routing to Schedule Agent")
+                    return self.schedule_agent.query(query_text, session_id)
+                elif category == 'travel':
+                    logger.info("Routing to Travel Agent")
+                    return self.travel_agent.query(query_text, session_id)
+                else:
+                    # For general queries, try to find the most appropriate agent based on keywords
+                    if any(word in query_text.lower() for word in ['cheapest', 'price', 'cost', 'fare', 'ticket', 'expensive']):
+                        logger.info("Routing general query to Price Agent based on keywords")
+                        return self.price_agent.query(query_text, session_id)
+                    elif any(word in query_text.lower() for word in ['time', 'schedule', 'departure', 'arrival', 'when', 'fastest']):
+                        logger.info("Routing general query to Schedule Agent based on keywords")
+                        return self.schedule_agent.query(query_text, session_id)
+                    elif any(word in query_text.lower() for word in ['island', 'vacation', 'holiday', 'itinerary', 'trip', 'visit']):
+                        logger.info("Routing general query to Travel Agent based on keywords")
+                        return self.travel_agent.query(query_text, session_id)
+                    else:
+                        # Default to route agent for general transportation queries
+                        logger.info("Routing general query to Route Agent (default)")
+                        return self.route_agent.query(query_text, session_id)
+            except RuntimeError as e:
+                logger.error(f"Agent initialization failed: {str(e)}")
+                return f"I'm sorry, but I'm currently experiencing technical difficulties connecting to our ferry information service. Please try again in a few moments or contact support if the issue persists."
+            
+        except Exception as e:
+            logger.error(f"Error processing query: {str(e)}")
+            return "I'm sorry, I encountered an error while processing your query. Please try rephrasing your question or contact support for assistance."
 
 
 # Singleton instance

@@ -59,10 +59,20 @@ def initialize_agent():
             # Make sure databases are initialized first
             initialize_databases()
             
+            # Check if the API key is set
+            api_key = os.environ.get("GEMINI_API_KEY")
+            if not api_key:
+                logger.error("GEMINI_API_KEY environment variable not set")
+                raise RuntimeError("API key not set. Please ensure that GEMINI_API_KEY is set in the environment variables.")
+            
             ferry_agent = FerryAgent()
             logger.info("Ferry agent initialized successfully")
+        except RuntimeError as e:
+            logger.error(f"API key error when initializing ferry agent: {str(e)}")
+            raise
         except Exception as e:
             logger.error(f"Failed to initialize ferry agent: {str(e)}")
+            logger.error(traceback.format_exc())
             raise
 
 def initialize_agent_manager():
@@ -73,15 +83,26 @@ def initialize_agent_manager():
             # Make sure databases are initialized first
             initialize_databases()
             
+            # Check if the API key is set
+            api_key = os.environ.get("GEMINI_API_KEY")
+            if not api_key:
+                logger.error("GEMINI_API_KEY environment variable not set")
+                raise RuntimeError("API key not set. Please ensure that GEMINI_API_KEY is set in the environment variables.")
+            
             # Import and initialize the agent manager
             from agents.agent_manager import get_agent_manager
             agent_manager = get_agent_manager()
             logger.info("Agent manager initialized successfully")
+        except RuntimeError as e:
+            logger.error(f"API key error when initializing agent manager: {str(e)}")
+            # We should still raise this so the app can fall back to ferry_agent
+            # Don't try to initialize ferry_agent here as it will also fail with the same error
+            raise
         except Exception as e:
             logger.error(f"Failed to initialize agent manager: {str(e)}")
             logger.error(traceback.format_exc())
-            # Fall back to the main ferry agent
-            initialize_agent()
+            # Fall back to the main ferry agent, but only if it's not an API key error
+            # as that would fail too
             raise
 
 # Initialize the agents at app startup
@@ -123,71 +144,130 @@ def chat():
         if agent_manager is not None:
             logger.info(f"Processing query with agent manager: '{user_message}' (session: {conversation_id}, agent: {agent_type})")
             
-            # Handle specific agent types
-            if agent_type == "route":
-                logger.info("Using Route Finding Agent directly")
-                response = agent_manager.route_agent.query(user_message, conversation_id)
-            elif agent_type == "price":
-                logger.info("Using Price Comparison Agent directly")
-                response = agent_manager.price_agent.query(user_message, conversation_id)
-            elif agent_type == "schedule":
-                logger.info("Using Schedule Optimization Agent directly")
-                response = agent_manager.schedule_agent.query(user_message, conversation_id)
-            elif agent_type == "travel":
-                logger.info("Using Travel Planning Agent directly")
-                response = agent_manager.travel_agent.query(user_message, conversation_id)
-            else:
-                # Auto-detect or fallback
-                response = agent_manager.process_query(user_message, conversation_id)
+            try:
+                # Handle specific agent types
+                if agent_type == "route":
+                    logger.info("Using Route Finding Agent directly")
+                    try:
+                        response = agent_manager.route_agent.query(user_message, conversation_id)
+                    except RuntimeError as e:
+                        logger.error(f"Route agent initialization error: {str(e)}")
+                        if "API key" in str(e):
+                            response = f"I'm sorry, but there's an issue with the API configuration. Please ensure that a valid Gemini API key is set in the environment."
+                        else:
+                            response = f"I'm sorry, but I'm currently experiencing technical difficulties with the route finding service. Please try again in a few moments or contact support if the issue persists."
+                elif agent_type == "price":
+                    logger.info("Using Price Comparison Agent directly")
+                    try:
+                        response = agent_manager.price_agent.query(user_message, conversation_id)
+                    except RuntimeError as e:
+                        logger.error(f"Price agent initialization error: {str(e)}")
+                        if "API key" in str(e):
+                            response = f"I'm sorry, but there's an issue with the API configuration. Please ensure that a valid Gemini API key is set in the environment."
+                        else:
+                            response = f"I'm sorry, but I'm currently experiencing technical difficulties with the price comparison service. Please try again in a few moments or contact support if the issue persists."
+                elif agent_type == "schedule":
+                    logger.info("Using Schedule Optimization Agent directly")
+                    try:
+                        response = agent_manager.schedule_agent.query(user_message, conversation_id)
+                    except RuntimeError as e:
+                        logger.error(f"Schedule agent initialization error: {str(e)}")
+                        if "API key" in str(e):
+                            response = f"I'm sorry, but there's an issue with the API configuration. Please ensure that a valid Gemini API key is set in the environment."
+                        else:
+                            response = f"I'm sorry, but I'm currently experiencing technical difficulties with the schedule optimization service. Please try again in a few moments or contact support if the issue persists."
+                elif agent_type == "travel":
+                    logger.info("Using Travel Planning Agent directly")
+                    try:
+                        response = agent_manager.travel_agent.query(user_message, conversation_id)
+                    except RuntimeError as e:
+                        logger.error(f"Travel agent initialization error: {str(e)}")
+                        if "API key" in str(e):
+                            response = f"I'm sorry, but there's an issue with the API configuration. Please ensure that a valid Gemini API key is set in the environment."
+                        else:
+                            response = f"I'm sorry, but I'm currently experiencing technical difficulties with the travel planning service. Please try again in a few moments or contact support if the issue persists."
+                else:
+                    # Auto-detect or fallback
+                    response = agent_manager.process_query(user_message, conversation_id)
+            except Exception as e:
+                logger.error(f"Error with agent processing: {str(e)}")
+                # Fall back to the main ferry agent
+                try:
+                    if ferry_agent is None:
+                        initialize_agent()
+                    response = ferry_agent.query(user_message, conversation_id)
+                except Exception as e:
+                    logger.error(f"Fallback agent also failed: {str(e)}")
+                    if "API key" in str(e):
+                        response = "I'm sorry, but there's an issue with the API configuration. Please ensure that a valid Gemini API key is set in the environment."
+                    else:
+                        response = "I'm sorry, but I'm experiencing technical difficulties connecting to the ferry information service. Please try again later."
         else:
             # Fall back to the main ferry agent
             logger.info(f"Agent manager not available, using main ferry agent")
             # Make sure agent is initialized
-            if ferry_agent is None:
-                initialize_agent()
+            try:
+                if ferry_agent is None:
+                    initialize_agent()
                 
-            # Check if this is a direct route query (e.g., "Brindisi to Corfu")
-            direct_route_pattern = r"^([A-Za-z\s\(\)]+)\s+to\s+([A-Za-z\s\(\)]+)$"
-            route_match = re.match(direct_route_pattern, user_message)
-            
-            if route_match:
-                # This appears to be a direct route query, let's handle it specially
-                origin = route_match.group(1).strip()
-                destination = route_match.group(2).strip()
-                logger.info(f"Detected direct route query: {origin} to {destination}")
+                # Check if this is a direct route query (e.g., "Brindisi to Corfu")
+                direct_route_pattern = r"^([A-Za-z\s\(\)]+)\s+to\s+([A-Za-z\s\(\)]+)$"
+                route_match = re.match(direct_route_pattern, user_message)
                 
-                # First check for direct routes using a safe query through the ferry agent
-                route_query = f"""
-                SELECT route_number, company, origin_port_name, destination_port_name, 
-                       departure_time, arrival_time, duration 
-                FROM routes 
-                WHERE LOWER(origin_port_name) = LOWER('{origin}') 
-                  AND LOWER(destination_port_name) = LOWER('{destination}')
-                """
-                
-                # Get direct routes
-                route_results = ferry_agent.run_ferry_query(route_query)
-                
-                if "No results found" in route_results or not route_results:
-                    # If no current routes, check historical data directly
-                    logger.info(f"No current routes found, checking historical data for {origin} to {destination}")
-                    historical_results = ferry_agent.check_historical_routes(origin, destination)
+                if route_match:
+                    # This appears to be a direct route query, let's handle it specially
+                    origin = route_match.group(1).strip()
+                    destination = route_match.group(2).strip()
+                    logger.info(f"Detected direct route query: {origin} to {destination}")
                     
-                    if "No historical routes found" in historical_results:
-                        response = f"I couldn't find any current ferry routes from {origin} to {destination}. " \
-                                  f"Let me check the historical data...\n\n" \
-                                  f"I don't have any historical records of routes between {origin} and {destination}. " \
-                                  f"This route may not be offered by any ferry company, or it might require a connection " \
-                                  f"through another port."
-                    else:
-                        response = f"I couldn't find any current ferry routes from {origin} to {destination}. " \
-                                  f"Let me check the historical data...\n\n{historical_results}"
+                    try:
+                        # First check for direct routes using a safe query through the ferry agent
+                        route_query = f"""
+                        SELECT route_number, company, origin_port_name, destination_port_name, 
+                               departure_time, arrival_time, duration 
+                        FROM routes 
+                        WHERE LOWER(origin_port_name) = LOWER('{origin}') 
+                          AND LOWER(destination_port_name) = LOWER('{destination}')
+                        """
+                        
+                        # Get direct routes
+                        route_results = ferry_agent.run_ferry_query(route_query)
+                        
+                        if "No results found" in route_results or not route_results:
+                            # If no current routes, check historical data directly
+                            logger.info(f"No current routes found, checking historical data for {origin} to {destination}")
+                            try:
+                                historical_results = ferry_agent.check_historical_routes(origin, destination)
+                                
+                                if "No historical routes found" in historical_results:
+                                    response = f"I couldn't find any current ferry routes from {origin} to {destination}. " \
+                                              f"Let me check the historical data...\n\n" \
+                                              f"I don't have any historical records of routes between {origin} and {destination}. " \
+                                              f"This route may not be offered by any ferry company, or it might require a connection " \
+                                              f"through another port."
+                                else:
+                                    response = f"I couldn't find any current ferry routes from {origin} to {destination}. " \
+                                              f"Let me check the historical data...\n\n{historical_results}"
+                            except Exception as e:
+                                logger.error(f"Error checking historical routes: {str(e)}")
+                                response = f"I couldn't find any current ferry routes from {origin} to {destination}. " \
+                                          f"I also encountered an issue while checking historical data. Please try again later."
+                        else:
+                            # Let the agent handle the response for proper formatting
+                            response = ferry_agent.query(user_message, conversation_id)
+                    except Exception as e:
+                        logger.error(f"Error processing direct route query: {str(e)}")
+                        response = f"I'm sorry, but I encountered an issue while searching for routes between {origin} and {destination}. " \
+                                  f"Please try again later or contact support if the problem persists."
                 else:
-                    # Let the agent handle the response for proper formatting
+                    # Process the query with ferry agent normally
                     response = ferry_agent.query(user_message, conversation_id)
-            else:
-                # Process the query with ferry agent normally
-                response = ferry_agent.query(user_message, conversation_id)
+            except Exception as e:
+                logger.error(f"Error with ferry agent: {str(e)}")
+                if "API key" in str(e):
+                    response = "I'm sorry, but there's an issue with the API configuration. Please ensure that a valid Gemini API key is set in the environment."
+                else:
+                    response = "I'm sorry, but I'm experiencing technical difficulties connecting to the ferry information service. Please try again later."
         
         # Return response to frontend
         return jsonify({
@@ -274,17 +354,33 @@ def get_ports():
         search_term = request.args.get("search", "")
         
         # Use ferry_agent (which should always be available or can fall back to)
-        if ferry_agent is None:
-            initialize_agent()
-            
-        port_info = ferry_agent.get_port_information(search_term)
-        # Split the port info string into a list of ports
-        ports = [{"code": line.split(":")[0].strip(), "name": line.split(":")[1].strip()} 
-                 for line in port_info.split("\n") if ":" in line]
-        return jsonify({"ports": ports})
+        try:
+            if ferry_agent is None:
+                initialize_agent()
+                
+            port_info = ferry_agent.get_port_information(search_term)
+            # Split the port info string into a list of ports
+            ports = [{"code": line.split(":")[0].strip(), "name": line.split(":")[1].strip()} 
+                     for line in port_info.split("\n") if ":" in line]
+            return jsonify({"ports": ports})
+        except RuntimeError as e:
+            logger.error(f"Ferry agent initialization error: {str(e)}")
+            if "API key" in str(e):
+                return jsonify({
+                    "error": "API configuration issue",
+                    "message": "There appears to be an issue with the API configuration. Please ensure that a valid Gemini API key is set in the environment."
+                }), 503
+            else:
+                return jsonify({
+                    "error": "Failed to initialize ferry information service",
+                    "message": "The system is currently experiencing technical difficulties. Please try again later."
+                }), 503
     except Exception as e:
         logger.error(f"Error retrieving ports: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({
+            "error": "Failed to retrieve port information",
+            "message": "There was an error processing your request. Please try again later."
+        }), 500
 
 @app.route("/api/database-status", methods=["GET"])
 def database_status():
