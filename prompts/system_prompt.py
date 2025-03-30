@@ -427,7 +427,6 @@ system_prompt = system_prompt + f"\n\nCurrent Time: {current_time_in_string}\n"
 
 system_prompt = system_prompt + final_words
 
-
 def get_system_prompt():
     """
     Returns the system prompt with the current date and time.

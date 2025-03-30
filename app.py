@@ -87,97 +87,24 @@ def chat():
         if ferry_agent is None:
             initialize_agent()
             
-        # Log the raw request data for debugging
-        logger.info(f"Received chat request: {request.data}")
-        
         # Get user message
         data = request.json
         user_message = data.get("message", "")
         conversation_id = data.get("conversation_id", None)
-        
-        logger.info(f"Processing message: '{user_message}' (conversation_id: {conversation_id})")
         
         # Initialize or retrieve conversation history
         if not conversation_id:
             conversation_id = datetime.now().strftime("%Y%m%d%H%M%S")
             session[conversation_id] = []
         
-        # Check for special keyword queries like "cheapest to"
-        import re
-        
-        # Check for special pattern queries
-        special_keywords = ["cheapest", "fastest", "best", "direct"]
-        special_pattern = r"^(" + "|".join(special_keywords) + r")\s+to\s+([A-Za-z\s\(\)]+)$"
-        special_match = re.match(special_pattern, user_message.lower())
-        
-        # Direct route pattern (e.g., "Brindisi to Corfu")
-        direct_route_pattern = r"^([A-Za-z\s\(\)]+)\s+to\s+([A-Za-z\s\(\)]+)$"
-        route_match = re.match(direct_route_pattern, user_message)
-        
-        if special_match:
-            # This is a special query like "cheapest to Mykonos"
-            query_type = special_match.group(1).strip()
-            destination = special_match.group(2).strip()
-            logger.info(f"Detected special query: {query_type} to {destination}")
-            
-            # Process through the regular agent query
-            response = ferry_agent.query(user_message, conversation_id)
-            
-        elif route_match:
-            # This appears to be a direct route query, let's handle it specially
-            origin = route_match.group(1).strip()
-            destination = route_match.group(2).strip()
-            
-            # Skip if this is actually a special query we already handled
-            if origin.lower() in special_keywords:
-                logger.info(f"Skipping direct route handling for special query: {origin} to {destination}")
-                response = ferry_agent.query(user_message, conversation_id)
-            else:
-                logger.info(f"Detected direct route query: {origin} to {destination}")
-                
-                # First check current routes using a safe query through the ferry agent
-                route_query = f"""
-                SELECT route_number, company, origin_port_name, destination_port_name, 
-                       departure_time, arrival_time, duration 
-                FROM routes 
-                WHERE LOWER(origin_port_name) = LOWER('{origin}') 
-                  AND LOWER(destination_port_name) = LOWER('{destination}')
-                """
-                
-                # Get direct routes
-                route_results = ferry_agent.run_ferry_query(route_query)
-                
-                if "No results found" in route_results or not route_results:
-                    # If no current routes, check historical data directly
-                    logger.info(f"No current routes found, checking historical data for {origin} to {destination}")
-                    historical_results = ferry_agent.check_historical_routes(origin, destination)
-                    
-                    if "No historical routes found" in historical_results:
-                        response = f"I couldn't find any current ferry routes from {origin} to {destination}. " \
-                                  f"Let me check the historical data...\n\n" \
-                                  f"I don't have any historical records of routes between {origin} and {destination}. " \
-                                  f"This route may not be offered by any ferry company, or it might require a connection " \
-                                  f"through another port."
-                    else:
-                        response = f"I couldn't find any current ferry routes from {origin} to {destination}. " \
-                                  f"Let me check the historical data...\n\n{historical_results}"
-                else:
-                    # Let the agent handle the response for proper formatting
-                    response = ferry_agent.query(user_message, conversation_id)
-        else:
-            # Process the query with ferry agent normally
-            response = ferry_agent.query(user_message, conversation_id)
-        
-        # Log the response data for debugging
-        logger.info(f"Generated response of length {len(response)}")
+        # Process the query with ferry agent
+        response = ferry_agent.query(user_message, conversation_id)
         
         # Return response to frontend
-        result = {
+        return jsonify({
             "response": response,
             "conversation_id": conversation_id
-        }
-        
-        return jsonify(result)
+        })
     
     except Exception as e:
         logger.error(f"Error processing chat request: {str(e)}", exc_info=True)
