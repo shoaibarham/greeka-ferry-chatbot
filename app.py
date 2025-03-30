@@ -99,23 +99,10 @@ def chat():
         
         # Check if this is a direct route query (e.g., "Brindisi to Corfu")
         import re
-        
-        # List of common query words that should not be treated as locations
-        query_terms = ["cheapest", "fastest", "best", "all", "ferry", "ferries", "route", "routes", "show", "find", "get", "list"]
-        
-        # More restrictive pattern for direct routes
         direct_route_pattern = r"^([A-Za-z\s\(\)]+)\s+to\s+([A-Za-z\s\(\)]+)$"
         route_match = re.match(direct_route_pattern, user_message)
         
-        # Validate the match doesn't start with common query terms
-        valid_route_query = False
         if route_match:
-            origin = route_match.group(1).strip().lower()
-            # Check if the origin is a real location and not a query term
-            if not any(origin.startswith(term.lower()) for term in query_terms):
-                valid_route_query = True
-        
-        if route_match and valid_route_query:
             # This appears to be a direct route query, let's handle it specially
             origin = route_match.group(1).strip()
             destination = route_match.group(2).strip()
