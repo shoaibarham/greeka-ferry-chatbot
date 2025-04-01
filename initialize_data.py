@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 def check_data_exists():
     """Check if there is already data in the database."""
     from app import app
+    from ext import db
     from models import FerryCompany, Port, Vessel, FerryRoute, Schedule, Accommodation
     
     with app.app_context():

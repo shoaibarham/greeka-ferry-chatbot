@@ -3,7 +3,8 @@ import logging
 from datetime import datetime
 from typing import Dict, List, Any, Optional
 
-from app import app, db
+from app import app
+from ext import db
 from models import FerryCompany, Port, Vessel, FerryRoute, Schedule, Accommodation
 from config import DEFAULT_DATA_PATH
 
