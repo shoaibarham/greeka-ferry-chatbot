@@ -1,0 +1,133 @@
+(env) PS C:\Users\shoaib\Desktop\greeka-ferry-chatbot> python initialize_data.py
+2025-04-01 21:47:35,150 - __main__ - INFO - Starting database initialization...
+2025-04-01 21:47:35,189 - data_loader - INFO - Loading ferry data from ./attached_assets/GTFS_data_v5.json...
+2025-04-01 21:47:35,492 - data_loader - INFO - Processing ferry data...
+2025-04-01 21:47:35,531 - data_loader - ERROR - Error updating ferry data: (sqlite3.IntegrityError) UNIQUE constraint failed: ferry_routes.route_id
+[SQL: INSERT INTO ferry_routes (route_id, company_id, origin_port_id, destination_port_id, origin_port_stop, destination_port_stop, departure_time, arrival_time, departure_offset, arrival_offset, duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('109486867', 1, 1, 3, 1, 3, '13:55', '15:40', 2, 2, 105)]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+Traceback (most recent call last):
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\engine\base.py", line 1964, in _exec_single_context   
+    self.dialect.do_execute(
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\engine\default.py", line 945, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.IntegrityError: UNIQUE constraint failed: ferry_routes.route_id
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\data_loader.py", line 76, in load_ferry_data
+    process_ferry_data(ferry_data)
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\data_loader.py", line 154, in process_ferry_data
+    db.session.flush()
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\orm\scoping.py", line 938, in flush
+    return self._proxied.flush(objects=objects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\orm\session.py", line 4353, in flush
+    self._flush(objects)
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\orm\session.py", line 4488, in _flush
+    with util.safe_reraise():
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\orm\session.py", line 4449, in _flush
+    flush_context.execute()
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+             ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\engine\base.py", line 1416, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\sql\elements.py", line 523, in _execute_on_connection 
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\engine\base.py", line 1638, in _execute_clauseelement 
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\engine\base.py", line 1843, in _execute_context       
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\engine\base.py", line 1983, in _exec_single_context   
+    self._handle_dbapi_exception(
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\engine\base.py", line 2352, in _handle_dbapi_exception    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\engine\base.py", line 1964, in _exec_single_context   
+    self.dialect.do_execute(
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\engine\default.py", line 945, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) UNIQUE constraint failed: ferry_routes.route_id
+[SQL: INSERT INTO ferry_routes (route_id, company_id, origin_port_id, destination_port_id, origin_port_stop, destination_port_stop, departure_time, arrival_time, departure_offset, arrival_offset, duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('109486867', 1, 1, 3, 1, 3, '13:55', '15:40', 2, 2, 105)]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2025-04-01 21:47:35,569 - __main__ - ERROR - Error initializing database: (sqlite3.IntegrityError) UNIQUE constraint failed: ferry_routes.route_id
+[SQL: INSERT INTO ferry_routes (route_id, company_id, origin_port_id, destination_port_id, origin_port_stop, destination_port_stop, departure_time, arrival_time, departure_offset, arrival_offset, duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('109486867', 1, 1, 3, 1, 3, '13:55', '15:40', 2, 2, 105)]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+Traceback (most recent call last):
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\engine\base.py", line 1964, in _exec_single_context   
+    self.dialect.do_execute(
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\engine\default.py", line 945, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.IntegrityError: UNIQUE constraint failed: ferry_routes.route_id
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\initialize_data.py", line 62, in main
+    result = load_ferry_data(DEFAULT_DATA_PATH)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\data_loader.py", line 76, in load_ferry_data
+    process_ferry_data(ferry_data)
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\data_loader.py", line 154, in process_ferry_data
+    db.session.flush()
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\orm\scoping.py", line 938, in flush
+    return self._proxied.flush(objects=objects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\orm\session.py", line 4353, in flush
+    self._flush(objects)
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\orm\session.py", line 4488, in _flush
+    with util.safe_reraise():
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\util\langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\orm\session.py", line 4449, in _flush
+    flush_context.execute()
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 466, in execute
+    rec.execute(self)
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\orm\unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\orm\persistence.py", line 93, in save_obj
+    _emit_insert_statements(
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\orm\persistence.py", line 1233, in _emit_insert_statements
+    result = connection.execute(
+             ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\engine\base.py", line 1416, in execute
+    return meth(
+           ^^^^^
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\sql\elements.py", line 523, in _execute_on_connection 
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\engine\base.py", line 1638, in _execute_clauseelement 
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\engine\base.py", line 1843, in _execute_context       
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\engine\base.py", line 1983, in _exec_single_context   
+    self._handle_dbapi_exception(
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\engine\base.py", line 2352, in _handle_dbapi_exception    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\engine\base.py", line 1964, in _exec_single_context   
+    self.dialect.do_execute(
+  File "C:\Users\shoaib\Desktop\greeka-ferry-chatbot\env\Lib\site-packages\sqlalchemy\engine\default.py", line 945, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) UNIQUE constraint failed: ferry_routes.route_id
+[SQL: INSERT INTO ferry_routes (route_id, company_id, origin_port_id, destination_port_id, origin_port_stop, destination_port_stop, departure_time, arrival_time, departure_offset, arrival_offset, duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('109486867', 1, 1, 3, 1, 3, '13:55', '15:40', 2, 2, 105)]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+Error initializing database: (sqlite3.IntegrityError) UNIQUE constraint failed: ferry_routes.route_id
+[SQL: INSERT INTO ferry_routes (route_id, company_id, origin_port_id, destination_port_id, origin_port_stop, destination_port_stop, departure_time, arrival_time, departure_offset, arrival_offset, duration) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)]
+[parameters: ('109486867', 1, 1, 3, 1, 3, '13:55', '15:40', 2, 2, 105)]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
