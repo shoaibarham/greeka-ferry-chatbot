@@ -1,220 +1,169 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Greek Ferry Information System</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f0f8ff;
-            color: #333;
-        }
-        
-        .chat-container {
-            background-color: white;
-            border-radius: 10px;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            height: 70vh;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .chat-messages {
-            flex-grow: 1;
-            overflow-y: auto;
-            padding: 10px;
-            margin-bottom: 15px;
-            border: 1px solid #eaeaea;
-            border-radius: 8px;
-            background-color: #f9f9f9;
-        }
-        
-        .message {
-            margin-bottom: 15px;
-            padding: 10px 15px;
-            border-radius: 18px;
-            max-width: 80%;
-            word-wrap: break-word;
-        }
-        
-        .user-message {
-            background-color: #e3f2fd;
-            color: #0d47a1;
-            align-self: flex-end;
-            margin-left: auto;
-        }
-        
-        .agent-message {
-            background-color: #f1f0f0;
-            color: #333;
-            align-self: flex-start;
-        }
-        
-        .header {
-            background-color: #1976D2;
-            color: white;
-            padding: 20px 0;
-            margin-bottom: 30px;
-            box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
-        }
-        
-        .input-group {
-            margin-top: 10px;
-        }
-        
-        .btn-primary {
-            background-color: #1976D2;
-            border-color: #1976D2;
-        }
-        
-        .btn-primary:hover {
-            background-color: #1565C0;
-            border-color: #1565C0;
-        }
-        
-        .loading {
-            display: none;
-            text-align: center;
-            margin: 10px 0;
-        }
-        
-        .spinner-border {
-            width: 1.5rem;
-            height: 1.5rem;
-            border-width: 0.2em;
-        }
-    </style>
+    <title>Greek Ferry Chatbot</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    
+    <!-- Roboto font -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <div class="header">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-8 offset-md-2">
-                    <h1 class="text-center">Greek Ferry Information System</h1>
-                    <p class="text-center mb-0">Ask about ferry routes, schedules, and prices</p>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="container mt-4">
-        <div class="row">
-            <div class="col-md-8 offset-md-2">
+    <div class="container-fluid py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
                 <div class="chat-container">
-                    <div class="chat-messages" id="chat-messages">
-                        <div class="message agent-message">
-                            Hello! I'm your ferry information assistant. I can help you find ferry routes in Greece, check schedules, and provide ticket prices. How can I assist you today?
-                        </div>
+                    <div class="chat-header">
+                        <h1><i class="fas fa-ship me-2 text-info"></i> Greek Ferry Chatbot</h1>
+                        <p>Your personal guide to ferry travel across the Greek islands</p>
                     </div>
                     
-                    <div class="loading" id="loading">
-                        <span class="spinner-border text-primary" role="status"></span>
-                        <span class="ms-2">Thinking...</span>
-                    </div>
-                    
-                    <div class="input-area">
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="user-input" placeholder="Ask about ferry routes, schedules, or prices...">
-                            <button class="btn btn-primary" type="button" id="send-button">
-                                <i class="bi bi-send"></i> Send
+                    <div class="chat-body">
+                        <div id="messages" class="messages-container"></div>
+                        
+                        <div class="input-container">
+                            <input 
+                                type="text" 
+                                id="message-input" 
+                                class="message-input"
+                                placeholder="Ask about ferry routes, schedules, or prices..."
+                                aria-label="Type your message">
+                            
+                            <button id="send-button" class="send-button" aria-label="Send message">
+                                <i class="fas fa-paper-plane"></i>
                             </button>
                         </div>
                     </div>
                 </div>
                 
                 <div class="mt-4">
-                    <p class="text-center text-muted">Example questions:</p>
-                    <div class="d-flex justify-content-center flex-wrap gap-2">
-                        <button class="btn btn-sm btn-outline-primary example-question">Find ferries from Athens to Santorini</button>
-                        <button class="btn btn-sm btn-outline-primary example-question">What's the schedule from Mykonos to Paros?</button>
-                        <button class="btn btn-sm btn-outline-primary example-question">How much is a ticket from Piraeus to Naxos?</button>
+                    <div class="card border-0 shadow">
+                        <div class="card-header bg-info bg-opacity-10">
+                            <h5 class="mb-0"><i class="fas fa-lightbulb me-2"></i>Try asking</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-2">
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <div class="example-chip">
+                                        <a href="#" class="example-question">
+                                            Milos to Kimolos?
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <div class="example-chip">
+                                        <a href="#" class="example-question">
+                                            Athens to Santorini
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <div class="example-chip">
+                                        <a href="#" class="example-question">
+                                            Cheapest to Mykonos
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <div class="example-chip">
+                                        <a href="#" class="example-question">
+                                            Paros-Naxos price
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <div class="example-chip">
+                                        <a href="#" class="example-question">
+                                            Ferry to Hydra
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <div class="example-chip">
+                                        <a href="#" class="example-question">
+                                            Fastest to Crete
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <div class="example-chip">
+                                        <a href="#" class="example-question">
+                                            June 2025 ferries
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="col-6 col-md-4 col-lg-3">
+                                    <div class="example-chip">
+                                        <a href="#" class="example-question">
+                                            Ferry companies
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="info-section mt-4">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow h-100">
+                                <div class="card-header bg-info bg-opacity-10">
+                                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>About</h5>
+                                </div>
+                                <div class="card-body">
+                                    <p>This AI-powered chatbot provides information about ferry routes, schedules, and pricing between Greek islands for 2025. Our data is regularly updated to ensure accuracy.</p>
+                                    <p class="mb-0">Try asking about specific routes, dates, prices, or ferry companies to plan your perfect Greek island hopping adventure!</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow h-100">
+                                <div class="card-header bg-info bg-opacity-10">
+                                    <h5 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i>Popular Destinations</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <span class="badge bg-secondary">Santorini</span>
+                                        <span class="badge bg-secondary">Mykonos</span>
+                                        <span class="badge bg-secondary">Crete</span>
+                                        <span class="badge bg-secondary">Paros</span>
+                                        <span class="badge bg-secondary">Naxos</span>
+                                        <span class="badge bg-secondary">Rhodes</span>
+                                        <span class="badge bg-secondary">Milos</span>
+                                        <span class="badge bg-secondary">Hydra</span>
+                                        <span class="badge bg-secondary">Corfu</span>
+                                        <span class="badge bg-secondary">Kos</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const chatMessages = document.getElementById('chat-messages');
-            const userInput = document.getElementById('user-input');
-            const sendButton = document.getElementById('send-button');
-            const loading = document.getElementById('loading');
-            const exampleQuestions = document.querySelectorAll('.example-question');
-            
-            let sessionId = Date.now().toString();
-            
-            // Function to add a message to the chat
-            function addMessage(text, isUser) {
-                const messageDiv = document.createElement('div');
-                messageDiv.classList.add('message');
-                messageDiv.classList.add(isUser ? 'user-message' : 'agent-message');
-                messageDiv.textContent = text;
-                chatMessages.appendChild(messageDiv);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            }
-            
-            // Function to send user message to the server
-            async function sendMessage(text) {
-                if (!text.trim()) return;
-                
-                addMessage(text, true);
-                userInput.value = '';
-                loading.style.display = 'block';
-                
-                try {
-                    const response = await fetch('/api/chat', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            query: text,
-                            session_id: sessionId
-                        })
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (data.error) {
-                        addMessage('Sorry, there was an error processing your request: ' + data.error, false);
-                    } else {
-                        addMessage(data.response, false);
-                        sessionId = data.session_id || sessionId;
-                    }
-                } catch (error) {
-                    addMessage('Sorry, there was a problem connecting to the server.', false);
-                    console.error('Error:', error);
-                } finally {
-                    loading.style.display = 'none';
-                }
-            }
-            
-            // Event listeners
-            sendButton.addEventListener('click', () => {
-                sendMessage(userInput.value);
+        // Handle example question clicks
+        document.querySelectorAll('.example-question').forEach(el => {
+            el.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.getElementById('message-input').value = el.textContent.trim();
+                document.getElementById('send-button').click();
             });
-            
-            userInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    sendMessage(userInput.value);
-                }
-            });
-            
-            exampleQuestions.forEach(button => {
-                button.addEventListener('click', () => {
-                    const question = button.textContent;
-                    userInput.value = question;
-                    sendMessage(question);
-                });
-            });
-            
-            // Focus on input when page loads
-            userInput.focus();
         });
     </script>
 </body>

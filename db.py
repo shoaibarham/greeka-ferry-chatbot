@@ -1,93 +1,50 @@
-"""
-Database connection utility functions for the ferry application.
-"""
-import os
-import logging
 import sqlite3
-from typing import List, Tuple, Any, Optional, Union
-
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker, scoped_session
-
-from config import DATABASE_URL
+import logging
+from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
 
-# Create SQLAlchemy engine and session
-engine = create_engine(DATABASE_URL)
-session_factory = sessionmaker(bind=engine)
-db_session = scoped_session(session_factory)
+# Path to SQLite database
+DB_PATH = 'gtfs.db'
 
+@contextmanager
 def get_db_connection():
-    """
-    Get a connection to the database.
-    This is used for raw SQL queries outside the ORM.
-    
-    Returns:
-        sqlite3.Connection: Database connection object
-    """
-    if 'sqlite' in DATABASE_URL:
-        # For SQLite
-        db_path = DATABASE_URL.replace('sqlite:///', '')
-        conn = sqlite3.connect(db_path)
-        conn.row_factory = sqlite3.Row
-        return conn
-    else:
-        # For PostgreSQL, we should use SQLAlchemy's connection
-        return engine.connect()
+    """Get a connection to the SQLite database."""
+    conn = None
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row  # Enable row factory
+        yield conn
+    except sqlite3.Error as e:
+        logger.error(f"Database connection error: {str(e)}")
+        raise
+    finally:
+        if conn:
+            conn.close()
 
 def execute_query(query_string, params=None):
-    """
-    Execute a raw SQL query and return results.
-    
-    Args:
-        query_string (str): SQL query to execute
-        params (list, optional): Parameters for the query
-        
-    Returns:
-        list: List of rows returned by the query
-    """
+    """Execute a raw SQL query and return results."""
     try:
-        logger.debug(f"Executing query: {query_string}")
-        if params:
-            logger.debug(f"With parameters: {params}")
-        
-        if 'sqlite' in DATABASE_URL:
-            # For SQLite, use sqlite3 directly
-            conn = get_db_connection()
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            
             if params:
-                cursor = conn.execute(query_string, params)
+                cursor.execute(query_string, params)
             else:
-                cursor = conn.execute(query_string)
-            
-            results = cursor.fetchall()
-            conn.close()
-            
-            # Convert sqlite3.Row objects to tuples for consistent handling
-            return [tuple(row) for row in results]
-        else:
-            # For PostgreSQL, use SQLAlchemy
-            with engine.connect() as connection:
-                if params:
-                    result = connection.execute(text(query_string), params)
-                else:
-                    result = connection.execute(text(query_string))
+                cursor.execute(query_string)
                 
-                return [row for row in result]
-    
-    except Exception as e:
-        logger.error(f"Database query error: {e}")
-        logger.error(f"Query: {query_string}")
-        if params:
-            logger.error(f"Parameters: {params}")
+            results = cursor.fetchall()
+            
+            # Convert sqlite3.Row objects to tuples for better compatibility
+            tuple_results = []
+            for row in results:
+                tuple_results.append(tuple(row))
+            
+            return tuple_results
+    except sqlite3.Error as e:
+        logger.error(f"Error executing query: {str(e)}")
         raise
 
 def get_connection():
-    """
-    Get a database connection.
-    This is a convenience wrapper around get_db_connection.
-    
-    Returns:
-        Connection: Database connection object
-    """
-    return get_db_connection()
+    """Get a database connection."""
+    return sqlite3.connect(DB_PATH)
