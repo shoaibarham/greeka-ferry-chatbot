@@ -4,14 +4,15 @@ A production-level Greek Ferry Information Chatbot using Gemini 2.0 with Flask b
 
 ## Overview
 
-This chatbot provides information about ferry routes, schedules, and prices between Greek islands. It uses Google's Gemini AI model with LangChain agents for natural language processing and a PostgreSQL database to store ferry information.
+This chatbot provides information about ferry routes, schedules, and prices between Greek islands. It uses Google's Gemini AI model with LangChain agents for natural language processing and SQLite databases to store ferry information.
 
 Key features:
 - Natural language understanding of ferry-related queries
 - Detailed information about routes, schedules, and prices
 - Multi-segment journey planning
 - Daily data updates to ensure accurate information
-- Admin interface for monitoring and manual updates
+- Secure admin interface with authentication for monitoring and manual updates
+- Historical route checking when current routes aren't available
 
 ## Architecture
 
@@ -19,9 +20,9 @@ The application consists of several components:
 
 1. **Web Interface**: A responsive Flask web application with a chat interface
 2. **Agent System**: LangChain agents using Google's Gemini model for query processing
-3. **Database**: PostgreSQL database storing ferry information
+3. **Database**: SQLite databases storing ferry information (main data and historical data)
 4. **Data Updater**: Scheduled daily data updates to maintain accuracy
-5. **Admin Panel**: Interface for monitoring database status and performing manual updates
+5. **Admin Panel**: Secure interface with authentication for monitoring database status and performing manual updates
 
 ## Data Structure
 
@@ -37,25 +38,24 @@ The database includes the following main tables:
 
 ### Prerequisites
 - Python 3.8+
-- PostgreSQL database
 - Google Gemini API key
 
 ### Environment Variables
 - `GEMINI_API_KEY`: Your Google Gemini API key
-- `SESSION_SECRET`: Secret key for Flask sessions
-- `DATABASE_URL`: PostgreSQL database connection URL
+- `SESSION_SECRET`: Secret key for Flask sessions (optional, defaults to a development key)
 
 ### Installation
 
 1. Clone the repository
 2. Install dependencies:
    ```
-   pip install -r requirements.txt
+   pip install -r dependencies.txt
    ```
 3. Configure environment variables
-4. Initialize the database:
+4. Initialize the databases:
    ```
-   python data_updater.py
+   python initialize_data.py
+   python initialize_historical_data.py
    ```
 5. Start the application:
    ```
@@ -73,10 +73,12 @@ The database includes the following main tables:
   - "I want to go from Milos to Piraeus with a stop in Sifnos."
 
 ### Admin Interface
-- Access the admin panel at `/admin`
+- Access the admin panel at `/admin` (requires login)
+- Login with default credentials (username: `admin`, password: `admin123`)
 - View database status and record counts
 - Trigger manual data updates
 - Monitor update history
+- Secure logout when finished
 
 ## Data Update Process
 
@@ -91,9 +93,12 @@ Manual updates can be triggered through the admin interface.
 ## API Endpoints
 
 - `/api/chat`: Process user queries (POST)
-- `/api/update_data`: Trigger data updates (POST)
+- `/api/update_data`: Trigger data updates (POST, requires authentication)
+- `/api/update_historical_data`: Update historical route data (POST, requires authentication)
 - `/api/ports`: Get a list of available ports (GET)
 - `/api/database-status`: Get database status information (GET)
+- `/login`: Admin authentication endpoint (GET/POST)
+- `/logout`: Admin logout endpoint (GET, requires authentication)
 
 ## Future Enhancements
 
