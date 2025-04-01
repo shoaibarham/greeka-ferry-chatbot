@@ -54,12 +54,28 @@ def initialize_databases():
     if not os.path.exists(DB_PATH) or os.path.getsize(DB_PATH) == 0:
         logger.info("Initializing main ferry database...")
         try:
-            import initialize_data
-            initialize_data.main()
+            # Use sqlite_loader directly
+            from sqlite_loader import load_data
+            from config import DEFAULT_DATA_PATH
+            load_data(json_path=DEFAULT_DATA_PATH, db_path=DB_PATH)
             logger.info("Main database initialization complete")
         except Exception as e:
             logger.error(f"Failed to initialize main database: {str(e)}")
             raise
+    
+    # Check if the tables exist in the main database
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='routes'")
+        if not cursor.fetchone():
+            logger.info("Routes table not found. Initializing database tables...")
+            from sqlite_loader import create_tables
+            create_tables(cursor)
+            conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.error(f"Error checking database tables: {str(e)}")
     
     # Initialize historical database
     if not os.path.exists(HISTORICAL_DB_PATH) or os.path.getsize(HISTORICAL_DB_PATH) == 0:
@@ -209,8 +225,19 @@ def update_data():
     try:
         import sqlite_loader
         source_file = request.json.get("source_file", "attached_assets/GTFS_data_v5.json")
-        result = sqlite_loader.load_data(source_file)
-        return jsonify({"success": True, "message": result})
+        result = sqlite_loader.load_data(json_path=source_file, db_path=DB_PATH)
+        
+        # Log the update
+        update_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with open("data_updates.log", "a") as f:
+            f.write(f"{update_time} - INFO - Successfully updated ferry data from {source_file}\n")
+        
+        # Reinitialize the ferry agent to use the updated data
+        global ferry_agent
+        from ferry_agent import FerryAgent
+        ferry_agent = FerryAgent()
+        
+        return jsonify({"success": True, "message": "Successfully updated ferry data"})
     except Exception as e:
         logger.error(f"Error updating ferry data: {str(e)}", exc_info=True)
         return jsonify({

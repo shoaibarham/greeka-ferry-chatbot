@@ -16,17 +16,17 @@ def check_data_exists():
     """Check if there is already data in the database."""
     from app import app
     from ext import db
-    from models import FerryCompany, Port, Vessel, FerryRoute, Schedule, Accommodation
+    from models import Route, DateAndVessel, VesselAndIndicativePrice, VesselAndAccommodationPrice
     
     with app.app_context():
-        route_count = FerryRoute.query.count()
-        company_count = FerryCompany.query.count()
-        port_count = Port.query.count()
+        route_count = Route.query.count()
+        dates_count = DateAndVessel.query.count()
+        vessels_prices_count = VesselAndIndicativePrice.query.count()
         
-        data_exists = route_count > 0 and company_count > 0 and port_count > 0
+        data_exists = route_count > 0 and dates_count > 0
         
         if data_exists:
-            logger.info(f"Database already contains data: {route_count} routes, {company_count} companies, {port_count} ports")
+            logger.info(f"Database already contains data: {route_count} routes, {dates_count} schedule dates")
             
         return data_exists
 
