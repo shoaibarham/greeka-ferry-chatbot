@@ -169,7 +169,8 @@ def process_ferry_data(ferry_data: List[Dict[str, Any]]) -> None:
             # Create schedule
             indicative_price = vessels_and_prices.get(vessel_key, 0)
             schedule = Schedule(
-                route_id=ferry_route.route_id,
+                ferry_route_id=ferry_route.id,
+                route_id=ferry_route.route_id,  # Keep original route_id for reference
                 date=parse_date(date_str),
                 vessel_id=vessel.id,
                 indicative_price=indicative_price
@@ -183,7 +184,8 @@ def process_ferry_data(ferry_data: List[Dict[str, Any]]) -> None:
                     acc_code, acc_name = parse_accommodation_key(acc_key)
                     accommodation = Accommodation(
                         vessel_id=vessel.id,
-                        route_id=ferry_route.route_id,
+                        ferry_route_id=ferry_route.id,
+                        route_id=ferry_route.route_id,  # Keep original route_id for reference
                         code=acc_code,
                         name=acc_name,
                         price=price

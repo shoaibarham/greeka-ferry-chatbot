@@ -116,7 +116,7 @@ def search_ferry_routes(params: FerrySearchParams) -> List[Dict[str, Any]]:
         JOIN
             ports dest ON fr.destination_port_id = dest.id
         JOIN
-            schedules s ON fr.route_id = s.route_id
+            schedules s ON fr.id = s.ferry_route_id
         JOIN
             vessels v ON s.vessel_id = v.id
         WHERE
@@ -161,8 +161,10 @@ def search_ferry_routes(params: FerrySearchParams) -> List[Dict[str, Any]]:
                 accommodations a
             JOIN
                 vessels v ON a.vessel_id = v.id
+            JOIN
+                ferry_routes fr ON a.ferry_route_id = fr.id
             WHERE
-                a.route_id = :route_id
+                fr.route_id = :route_id
                 AND v.name = :vessel_name
             """
             
@@ -242,7 +244,7 @@ def get_fastest_route(params: FerrySearchParams) -> Optional[Dict[str, Any]]:
         JOIN
             ports dest ON fr.destination_port_id = dest.id
         JOIN
-            schedules s ON fr.route_id = s.route_id
+            schedules s ON fr.id = s.ferry_route_id
         JOIN
             vessels v ON s.vessel_id = v.id
         WHERE
@@ -290,8 +292,10 @@ def get_fastest_route(params: FerrySearchParams) -> Optional[Dict[str, Any]]:
             accommodations a
         JOIN
             vessels v ON a.vessel_id = v.id
+        JOIN
+            ferry_routes fr ON a.ferry_route_id = fr.id
         WHERE
-            a.route_id = :route_id
+            fr.route_id = :route_id
             AND v.name = :vessel_name
         """
         
@@ -393,7 +397,7 @@ def get_available_dates(origin: str, destination: str) -> List[str]:
         JOIN
             ports dest ON fr.destination_port_id = dest.id
         JOIN
-            schedules s ON fr.route_id = s.route_id
+            schedules s ON fr.id = s.ferry_route_id
         WHERE
             orig.code = :origin
             AND dest.code = :destination
@@ -430,8 +434,10 @@ def get_available_accommodations(route_id: str, vessel_name: str) -> List[Dict[s
             accommodations a
         JOIN
             vessels v ON a.vessel_id = v.id
+        JOIN
+            ferry_routes fr ON a.ferry_route_id = fr.id
         WHERE
-            a.route_id = :route_id
+            fr.route_id = :route_id
             AND v.name = :vessel_name
         ORDER BY
             a.price

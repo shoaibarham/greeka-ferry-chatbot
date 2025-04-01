@@ -48,11 +48,12 @@ class Accommodation(db.Model):
     vessel_id = db.Column(db.Integer, ForeignKey('vessels.id'), nullable=False)
     code = db.Column(db.String(20), nullable=False)
     name = db.Column(db.String(255), nullable=False)
-    route_id = db.Column(db.String(50), ForeignKey('ferry_routes.route_id'), nullable=False)
+    ferry_route_id = db.Column(db.Integer, ForeignKey('ferry_routes.id'), nullable=False)  # Changed to reference the primary key
+    route_id = db.Column(db.String(50), nullable=False)  # Keep as a non-FK field for reference
     price = db.Column(db.Integer, nullable=False)  # Price in cents
     
     vessel = relationship("Vessel")
-    route = relationship("FerryRoute")
+    route = relationship("FerryRoute", foreign_keys=[ferry_route_id])
     
     def __repr__(self):
         return f"<Accommodation {self.name} on {self.vessel.name} - €{self.price/100:.2f}>"
@@ -62,7 +63,7 @@ class FerryRoute(db.Model):
     __tablename__ = 'ferry_routes'
     
     id = db.Column(db.Integer, primary_key=True)
-    route_id = db.Column(db.String(50), nullable=False, unique=True)
+    route_id = db.Column(db.String(50), nullable=False, index=True)  # Changed from unique=True to index=True
     company_id = db.Column(db.Integer, ForeignKey('ferry_companies.id'), nullable=False)
     origin_port_id = db.Column(db.Integer, ForeignKey('ports.id'), nullable=False)
     destination_port_id = db.Column(db.Integer, ForeignKey('ports.id'), nullable=False)
@@ -87,15 +88,16 @@ class Schedule(db.Model):
     __tablename__ = 'schedules'
     
     id = db.Column(db.Integer, primary_key=True)
-    route_id = db.Column(db.String(50), ForeignKey('ferry_routes.route_id'), nullable=False)
+    ferry_route_id = db.Column(db.Integer, ForeignKey('ferry_routes.id'), nullable=False)  # Changed to reference the primary key
+    route_id = db.Column(db.String(50), nullable=False)  # Keep as a non-FK field for reference
     date = db.Column(db.Date, nullable=False)
     vessel_id = db.Column(db.Integer, ForeignKey('vessels.id'), nullable=False)
     indicative_price = db.Column(db.Integer, nullable=False)  # Price in cents
     
-    route = relationship("FerryRoute", back_populates="schedules")
+    route = relationship("FerryRoute", foreign_keys=[ferry_route_id], back_populates="schedules")
     vessel = relationship("Vessel")
     
-    __table_args__ = (db.UniqueConstraint('route_id', 'date', name='_route_date_uc'),)
+    __table_args__ = (db.UniqueConstraint('ferry_route_id', 'date', name='_route_date_uc'),)
     
     def __repr__(self):
         return f"<Schedule {self.route.origin_port.code}-{self.route.destination_port.code} on {self.date}>"
