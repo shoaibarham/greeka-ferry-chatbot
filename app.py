@@ -27,6 +27,10 @@ from ext import db, login_manager
 db.init_app(app)
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+login_manager.login_message = "Please log in to access this page."
+login_manager.login_message_category = "warning"
+# Force login for protected views
+login_manager.session_protection = "strong"
 
 # Import models (after initializing db to avoid circular imports)
 from models import User
@@ -217,10 +221,12 @@ def chat():
         }), 500
 
 @app.route("/api/update_data", methods=["POST"])
+@login_required
 def update_data():
     """
     Endpoint to trigger main data update process.
     This would typically be called by a scheduled task.
+    Requires authentication.
     """
     try:
         import sqlite_loader
@@ -247,10 +253,12 @@ def update_data():
         }), 500
         
 @app.route("/api/update_historical_data", methods=["POST"])
+@login_required
 def update_historical_data():
     """
     Endpoint to trigger historical data update process.
     Updates the historical route database with past and future route availability.
+    Requires authentication.
     """
     try:
         import historical_data_loader
