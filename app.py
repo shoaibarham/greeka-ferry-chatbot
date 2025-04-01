@@ -6,7 +6,9 @@ import subprocess
 import threading
 import time
 
-from flask import Flask, render_template, request, jsonify, session
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
+from flask_login import login_user, logout_user, login_required, current_user
+from forms import LoginForm
 
 # Initialize logging
 logging.basicConfig(level=logging.DEBUG)
@@ -16,12 +18,35 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key")
 
+# Configure SQLAlchemy
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///user_auth.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+# Initialize extensions
+from ext import db, login_manager
+db.init_app(app)
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+# Import models (after initializing db to avoid circular imports)
+from models import User
+
 # Database paths
 DB_PATH = 'gtfs.db'
 HISTORICAL_DB_PATH = 'previous_db.db'
 
 # Initialize ferry agent (outside the routes to avoid recreation on each request)
 ferry_agent = None
+
+@login_manager.user_loader
+def load_user(user_id):
+    """Load user from the database using SQLAlchemy."""
+    try:
+        from models import User
+        return User.query.get(int(user_id))
+    except Exception as e:
+        logger.error(f"Error loading user: {str(e)}")
+        return None
 
 def initialize_databases():
     """Initialize both the main and historical databases if needed."""
@@ -65,15 +90,77 @@ def initialize_agent():
 # Initialize the ferry agent at app startup
 initialize_agent()
 
+# Create admin user if none exists (will be called in main.py)
+def create_admin_user():
+    try:
+        """Create an admin user if none exists."""
+        # Create tables if they don't exist
+        db.create_all()
+        
+        # Check if there are any users
+        if User.query.count() == 0:
+            # Create admin user
+            admin = User(username="admin", email="admin@example.com", is_admin=True)
+            admin.set_password("admin123")  # Default password, should be changed
+            db.session.add(admin)
+            db.session.commit()
+            logger.info("Created default admin user")
+    except Exception as e:
+        logger.error(f"Error creating admin user: {str(e)}")
+
 # Routes
 @app.route("/")
 def index():
     """Render the main page of the ferry chatbot application."""
     return render_template("index.html")
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    """Handle admin login."""
+    # If user is already logged in, redirect to admin panel
+    if current_user.is_authenticated:
+        return redirect(url_for('admin'))
+    
+    form = LoginForm()
+    
+    if form.validate_on_submit():
+        # Find user by username
+        user = User.query.filter_by(username=form.username.data).first()
+        
+        # Check if user exists and password is correct
+        if user is None or not user.check_password(form.password.data):
+            flash('Invalid username or password', 'danger')
+            return redirect(url_for('login'))
+        
+        # Log in user
+        login_user(user, remember=form.remember_me.data)
+        
+        # Redirect to admin panel
+        next_page = request.args.get('next')
+        if not next_page or not next_page.startswith('/'):
+            next_page = url_for('admin')
+            
+        return redirect(next_page)
+    
+    return render_template("login.html", form=form)
+
+@app.route("/logout")
+@login_required
+def logout():
+    """Handle admin logout."""
+    logout_user()
+    flash('You have been logged out', 'info')
+    return redirect(url_for('index'))
+
 @app.route("/admin")
+@login_required
 def admin():
     """Render the admin panel for managing ferry data."""
+    # Only allow access to admin users
+    if not current_user.is_admin:
+        flash('You do not have permission to access the admin panel', 'danger')
+        return redirect(url_for('index'))
+    
     return render_template("admin.html")
 
 @app.route("/api/chat", methods=["POST"])
