@@ -1,7 +1,7 @@
+"""Form classes for the ferry application."""
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField
-from wtforms.validators import DataRequired, Email, ValidationError
-from models import User
+from wtforms.validators import DataRequired
 
 class LoginForm(FlaskForm):
     """Form for admin login."""

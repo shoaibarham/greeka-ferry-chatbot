@@ -1,20 +1,20 @@
+"""Configuration settings for the ferry application."""
 import os
 
-# API Keys
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+# Flask configuration
+SECRET_KEY = os.environ.get("SESSION_SECRET", "dev-secret-key-change-in-production")
 
-# Database Configuration
-DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///ferry_data.db")
+# Database configuration
+DATABASE_URL = os.environ.get("DATABASE_URL", "sqlite:///gtfs.db")
 
-# Default data file path
-DEFAULT_DATA_PATH = "./attached_assets/GTFS_data_v5.json"
+# Gemini API configuration
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+MODEL_NAME = os.environ.get("GEMINI_MODEL_NAME", "gemini-1.5-pro")
+AGENT_TEMPERATURE = float(os.environ.get("AGENT_TEMPERATURE", "0.2"))
 
-# Maximum conversation history to maintain
-MAX_CONVERSATION_HISTORY = 10
+# Data file paths
+DEFAULT_DATA_PATH = os.environ.get("FERRY_DATA_PATH", "attached_assets/GTFS_data_v5.json")
+HISTORICAL_DATA_PATH = os.environ.get("HISTORICAL_DATA_PATH", "attached_assets/GTFS appear dates.json")
 
-# Agent configuration
-AGENT_VERBOSE = True
-AGENT_TEMPERATURE = 0.1
-
-# Model configuration
-MODEL_NAME = "gemini-2.0-flash"
+# Misc settings
+DEBUG = bool(os.environ.get("DEBUG", "True") == "True")
