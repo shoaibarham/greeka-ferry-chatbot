@@ -1,108 +1,74 @@
 from datetime import datetime
-from sqlalchemy import JSON, Float, ForeignKey, String
-from sqlalchemy.orm import relationship
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from ext import db
 
-class FerryCompany(db.Model):
-    """Model representing ferry companies that operate routes."""
-    __tablename__ = 'ferry_companies'
+# Models based on the SQLite schema
+
+class Route(db.Model):
+    """Model representing ferry routes."""
+    __tablename__ = 'routes'
     
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255), nullable=False)
-    code = db.Column(db.String(10), nullable=False, unique=True)
-    routes = relationship("FerryRoute", back_populates="company")
+    route_id = db.Column(db.Integer, primary_key=True)
+    route_number = db.Column(db.String(50), nullable=True)
+    company = db.Column(db.String(255), nullable=True)
+    company_code = db.Column(db.String(20), nullable=True)
+    origin_port_code = db.Column(db.String(20), nullable=True)
+    origin_port_name = db.Column(db.String(255), nullable=True)
+    destination_port_code = db.Column(db.String(20), nullable=True)
+    destination_port_name = db.Column(db.String(255), nullable=True)
+    departure_time = db.Column(db.String(10), nullable=True)  # HH:MM format
+    arrival_time = db.Column(db.String(10), nullable=True)  # HH:MM format
+    origin_port_stop = db.Column(db.Integer, nullable=True)
+    destination_port_stop = db.Column(db.Integer, nullable=True)
+    departure_offset = db.Column(db.Integer, nullable=True)
+    arrival_offset = db.Column(db.Integer, nullable=True)
+    duration = db.Column(db.Integer, nullable=True)  # Duration in minutes
+    
+    # Relationships
+    dates_and_vessels = db.relationship('DateAndVessel', backref='route', lazy=True)
+    vessels_and_prices = db.relationship('VesselAndIndicativePrice', backref='route', lazy=True)
+    accommodations = db.relationship('VesselAndAccommodationPrice', backref='route', lazy=True)
     
     def __repr__(self):
-        return f"<FerryCompany {self.name} ({self.code})>"
+        return f"<Route {self.route_id}: {self.origin_port_code} to {self.destination_port_code}>"
 
-class Port(db.Model):
-    """Model representing ports that ferries depart from and arrive at."""
-    __tablename__ = 'ports'
+class DateAndVessel(db.Model):
+    """Model representing dates and vessels for routes."""
+    __tablename__ = 'dates_and_vessels'
     
     id = db.Column(db.Integer, primary_key=True)
-    code = db.Column(db.String(10), nullable=False, unique=True)
-    name = db.Column(db.String(255), nullable=False)
+    route_id = db.Column(db.Integer, db.ForeignKey('routes.route_id'), nullable=False)
+    schedule_date = db.Column(db.String(20), nullable=True)  # YYYY-MM-DD format
+    vessel = db.Column(db.String(255), nullable=True)  # Format: "CODE___NAME"
     
     def __repr__(self):
-        return f"<Port {self.name} ({self.code})>"
+        return f"<DateAndVessel: Route {self.route_id} on {self.schedule_date} with {self.vessel}>"
 
-class Vessel(db.Model):
-    """Model representing ferry vessels."""
-    __tablename__ = 'vessels'
+class VesselAndIndicativePrice(db.Model):
+    """Model representing vessel indicative prices for routes."""
+    __tablename__ = 'vessels_and_indicative_prices'
     
-    id = db.Column(db.Integer, primary_key=True)
-    code = db.Column(db.String(20), nullable=False)
-    name = db.Column(db.String(255), nullable=False)
-    vessel_key = db.Column(db.String(255), nullable=False, unique=True)  # Combined code and name
+    route_id = db.Column(db.Integer, db.ForeignKey('routes.route_id'), primary_key=True)
+    vessel = db.Column(db.String(255), primary_key=True)  # Format: "CODE___NAME"
+    indicative_price = db.Column(db.Integer, nullable=True)  # Price in cents
     
     def __repr__(self):
-        return f"<Vessel {self.name} ({self.code})>"
+        return f"<VesselPrice: Route {self.route_id}, {self.vessel}, €{self.indicative_price/100:.2f}>"
 
-class Accommodation(db.Model):
-    """Model representing accommodation types available on vessels."""
-    __tablename__ = 'accommodations'
+class VesselAndAccommodationPrice(db.Model):
+    """Model representing vessel accommodation prices for routes."""
+    __tablename__ = 'vessels_and_accommodation_prices'
     
-    id = db.Column(db.Integer, primary_key=True)
-    vessel_id = db.Column(db.Integer, ForeignKey('vessels.id'), nullable=False)
-    code = db.Column(db.String(20), nullable=False)
-    name = db.Column(db.String(255), nullable=False)
-    ferry_route_id = db.Column(db.Integer, ForeignKey('ferry_routes.id'), nullable=False)  # Changed to reference the primary key
-    route_id = db.Column(db.String(50), nullable=False)  # Keep as a non-FK field for reference
-    price = db.Column(db.Integer, nullable=False)  # Price in cents
-    
-    vessel = relationship("Vessel")
-    route = relationship("FerryRoute", foreign_keys=[ferry_route_id])
+    route_id = db.Column(db.Integer, db.ForeignKey('routes.route_id'), primary_key=True)
+    vessel = db.Column(db.String(255), primary_key=True)  # Format: "CODE___NAME"
+    accommodation_type = db.Column(db.String(255), primary_key=True)  # Format: "CODE___NAME"
+    price = db.Column(db.Integer, nullable=True)  # Price in cents
     
     def __repr__(self):
-        return f"<Accommodation {self.name} on {self.vessel.name} - €{self.price/100:.2f}>"
+        return f"<AccommodationPrice: Route {self.route_id}, {self.vessel}, {self.accommodation_type}, €{self.price/100:.2f}>"
 
-class FerryRoute(db.Model):
-    """Model representing ferry routes between ports."""
-    __tablename__ = 'ferry_routes'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    route_id = db.Column(db.String(50), nullable=False, index=True)  # Changed from unique=True to index=True
-    company_id = db.Column(db.Integer, ForeignKey('ferry_companies.id'), nullable=False)
-    origin_port_id = db.Column(db.Integer, ForeignKey('ports.id'), nullable=False)
-    destination_port_id = db.Column(db.Integer, ForeignKey('ports.id'), nullable=False)
-    origin_port_stop = db.Column(db.Integer, nullable=False)
-    destination_port_stop = db.Column(db.Integer, nullable=False)
-    departure_time = db.Column(db.String(5), nullable=False)  # HH:MM format
-    arrival_time = db.Column(db.String(5), nullable=False)  # HH:MM format
-    departure_offset = db.Column(db.Integer, nullable=False)
-    arrival_offset = db.Column(db.Integer, nullable=False)
-    duration = db.Column(db.Integer, nullable=False)  # Duration in minutes
-    
-    company = relationship("FerryCompany", back_populates="routes")
-    origin_port = relationship("Port", foreign_keys=[origin_port_id])
-    destination_port = relationship("Port", foreign_keys=[destination_port_id])
-    schedules = relationship("Schedule", back_populates="route")
-    
-    def __repr__(self):
-        return f"<FerryRoute {self.origin_port.code} to {self.destination_port.code}>"
-
-class Schedule(db.Model):
-    """Model representing specific schedule dates for ferry routes."""
-    __tablename__ = 'schedules'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    ferry_route_id = db.Column(db.Integer, ForeignKey('ferry_routes.id'), nullable=False)  # Changed to reference the primary key
-    route_id = db.Column(db.String(50), nullable=False)  # Keep as a non-FK field for reference
-    date = db.Column(db.Date, nullable=False)
-    vessel_id = db.Column(db.Integer, ForeignKey('vessels.id'), nullable=False)
-    indicative_price = db.Column(db.Integer, nullable=False)  # Price in cents
-    
-    route = relationship("FerryRoute", foreign_keys=[ferry_route_id], back_populates="schedules")
-    vessel = relationship("Vessel")
-    
-    __table_args__ = (db.UniqueConstraint('ferry_route_id', 'date', name='_route_date_uc'),)
-    
-    def __repr__(self):
-        return f"<Schedule {self.route.origin_port.code}-{self.route.destination_port.code} on {self.date}>"
-
-
+# Keep this User model for authentication
 class User(UserMixin, db.Model):
     """Model representing admin users for the system."""
     __tablename__ = 'users'

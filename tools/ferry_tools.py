@@ -38,7 +38,11 @@ def get_all_ports() -> List[Dict[str, str]]:
     """
     try:
         query = """
-        SELECT code, name FROM ports
+        SELECT DISTINCT origin_port_code as code, origin_port_name as name 
+        FROM routes
+        UNION
+        SELECT DISTINCT destination_port_code as code, destination_port_name as name 
+        FROM routes
         ORDER BY name
         """
         results = execute_query(query)
@@ -94,37 +98,31 @@ def search_ferry_routes(params: FerrySearchParams) -> List[Dict[str, Any]]:
     try:
         query = """
         SELECT
-            fr.route_id,
-            orig.code as origin_code,
-            orig.name as origin_name,
-            dest.code as destination_code,
-            dest.name as destination_name,
-            fr.departure_time,
-            fr.arrival_time,
-            fr.duration,
-            fc.name as company_name,
-            fc.code as company_code,
-            v.name as vessel_name,
-            s.date,
-            s.indicative_price
+            r.route_id,
+            r.origin_port_code as origin_code,
+            r.origin_port_name as origin_name,
+            r.destination_port_code as destination_code,
+            r.destination_port_name as destination_name,
+            r.departure_time,
+            r.arrival_time,
+            r.duration,
+            r.company as company_name,
+            r.company_code as company_code,
+            substr(dv.vessel, instr(dv.vessel, '___') + 3) as vessel_name,
+            dv.schedule_date as date,
+            vip.indicative_price
         FROM
-            ferry_routes fr
+            routes r
         JOIN
-            ferry_companies fc ON fr.company_id = fc.id
-        JOIN
-            ports orig ON fr.origin_port_id = orig.id
-        JOIN
-            ports dest ON fr.destination_port_id = dest.id
-        JOIN
-            schedules s ON fr.id = s.ferry_route_id
-        JOIN
-            vessels v ON s.vessel_id = v.id
+            dates_and_vessels dv ON r.route_id = dv.route_id
+        LEFT JOIN
+            vessels_and_indicative_prices vip ON r.route_id = vip.route_id AND vip.vessel = dv.vessel
         WHERE
-            orig.code = :origin
-            AND dest.code = :destination
-            AND s.date = :date
+            r.origin_port_code = :origin
+            AND r.destination_port_code = :destination
+            AND dv.schedule_date = :date
         ORDER BY
-            fr.departure_time
+            r.departure_time
         """
         
         results = execute_query(query, {
@@ -154,18 +152,14 @@ def search_ferry_routes(params: FerrySearchParams) -> List[Dict[str, Any]]:
             # Get accommodation options
             acc_query = """
             SELECT
-                a.code,
-                a.name,
-                a.price
+                substr(vap.accommodation_type, 0, instr(vap.accommodation_type, '___')) as code,
+                substr(vap.accommodation_type, instr(vap.accommodation_type, '___') + 3) as name,
+                vap.price
             FROM
-                accommodations a
-            JOIN
-                vessels v ON a.vessel_id = v.id
-            JOIN
-                ferry_routes fr ON a.ferry_route_id = fr.id
+                vessels_and_accommodation_prices vap
             WHERE
-                fr.route_id = :route_id
-                AND v.name = :vessel_name
+                vap.route_id = :route_id
+                AND vap.vessel LIKE '%' || :vessel_name || '%'
             """
             
             acc_results = execute_query(acc_query, {
@@ -222,37 +216,31 @@ def get_fastest_route(params: FerrySearchParams) -> Optional[Dict[str, Any]]:
         # Get all routes
         query = """
         SELECT
-            fr.route_id,
-            orig.code as origin_code,
-            orig.name as origin_name,
-            dest.code as destination_code,
-            dest.name as destination_name,
-            fr.departure_time,
-            fr.arrival_time,
-            fr.duration,
-            fc.name as company_name,
-            fc.code as company_code,
-            v.name as vessel_name,
-            s.date,
-            s.indicative_price
+            r.route_id,
+            r.origin_port_code as origin_code,
+            r.origin_port_name as origin_name,
+            r.destination_port_code as destination_code,
+            r.destination_port_name as destination_name,
+            r.departure_time,
+            r.arrival_time,
+            r.duration,
+            r.company as company_name,
+            r.company_code as company_code,
+            substr(dv.vessel, instr(dv.vessel, '___') + 3) as vessel_name,
+            dv.schedule_date as date,
+            vip.indicative_price
         FROM
-            ferry_routes fr
+            routes r
         JOIN
-            ferry_companies fc ON fr.company_id = fc.id
-        JOIN
-            ports orig ON fr.origin_port_id = orig.id
-        JOIN
-            ports dest ON fr.destination_port_id = dest.id
-        JOIN
-            schedules s ON fr.id = s.ferry_route_id
-        JOIN
-            vessels v ON s.vessel_id = v.id
+            dates_and_vessels dv ON r.route_id = dv.route_id
+        LEFT JOIN
+            vessels_and_indicative_prices vip ON r.route_id = vip.route_id AND vip.vessel = dv.vessel
         WHERE
-            orig.code = :origin
-            AND dest.code = :destination
-            AND s.date = :date
+            r.origin_port_code = :origin
+            AND r.destination_port_code = :destination
+            AND dv.schedule_date = :date
         ORDER BY
-            fr.duration ASC
+            r.duration ASC
         LIMIT 1
         """
         
@@ -285,18 +273,14 @@ def get_fastest_route(params: FerrySearchParams) -> Optional[Dict[str, Any]]:
         # Get accommodation options
         acc_query = """
         SELECT
-            a.code,
-            a.name,
-            a.price
+            substr(vap.accommodation_type, 0, instr(vap.accommodation_type, '___')) as code,
+            substr(vap.accommodation_type, instr(vap.accommodation_type, '___') + 3) as name,
+            vap.price
         FROM
-            accommodations a
-        JOIN
-            vessels v ON a.vessel_id = v.id
-        JOIN
-            ferry_routes fr ON a.ferry_route_id = fr.id
+            vessels_and_accommodation_prices vap
         WHERE
-            fr.route_id = :route_id
-            AND v.name = :vessel_name
+            vap.route_id = :route_id
+            AND vap.vessel LIKE '%' || :vessel_name || '%'
         """
         
         acc_results = execute_query(acc_query, {
@@ -389,21 +373,17 @@ def get_available_dates(origin: str, destination: str) -> List[str]:
     try:
         query = """
         SELECT DISTINCT
-            s.date
+            dv.schedule_date
         FROM
-            ferry_routes fr
+            routes r
         JOIN
-            ports orig ON fr.origin_port_id = orig.id
-        JOIN
-            ports dest ON fr.destination_port_id = dest.id
-        JOIN
-            schedules s ON fr.id = s.ferry_route_id
+            dates_and_vessels dv ON r.route_id = dv.route_id
         WHERE
-            orig.code = :origin
-            AND dest.code = :destination
-            AND s.date >= CURRENT_DATE
+            r.origin_port_code = :origin
+            AND r.destination_port_code = :destination
+            AND dv.schedule_date >= date('now')
         ORDER BY
-            s.date
+            dv.schedule_date
         """
         
         results = execute_query(query, {"origin": origin, "destination": destination})
@@ -427,20 +407,16 @@ def get_available_accommodations(route_id: str, vessel_name: str) -> List[Dict[s
     try:
         query = """
         SELECT
-            a.code,
-            a.name,
-            a.price
+            substr(vap.accommodation_type, 0, instr(vap.accommodation_type, '___')) as code,
+            substr(vap.accommodation_type, instr(vap.accommodation_type, '___') + 3) as name,
+            vap.price
         FROM
-            accommodations a
-        JOIN
-            vessels v ON a.vessel_id = v.id
-        JOIN
-            ferry_routes fr ON a.ferry_route_id = fr.id
+            vessels_and_accommodation_prices vap
         WHERE
-            fr.route_id = :route_id
-            AND v.name = :vessel_name
+            vap.route_id = :route_id
+            AND vap.vessel LIKE '%' || :vessel_name || '%'
         ORDER BY
-            a.price
+            vap.price
         """
         
         results = execute_query(query, {"route_id": route_id, "vessel_name": vessel_name})
