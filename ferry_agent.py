@@ -553,28 +553,37 @@ class FerryAgent:
                 earliest_readable = format_date(earliest_start)
                 latest_readable = format_date(latest_end)
                 
-                # Extract month ranges for better readability
+                # Extract years and months for detailed information
                 start_month = ""
                 end_month = ""
+                start_year = ""
+                end_year = ""
                 try:
                     start_date = datetime.strptime(earliest_start, "%Y-%m-%d")
                     end_date = datetime.strptime(latest_end, "%Y-%m-%d")
                     start_month = start_date.strftime("%B")
                     end_month = end_date.strftime("%B")
+                    start_year = start_date.strftime("%Y")
+                    end_year = end_date.strftime("%Y")
                 except:
                     pass
                 
                 # Check if the route is entirely in the past, future, or spans the current date
                 message = ""
+                season = "summer" if start_month in ["June", "July", "August", "September"] else "winter"
+                
                 if latest_end < current_date:
-                    message = f"This route operated from {start_month} to {end_month} in previous seasons."
+                    # For past routes
+                    message = f"This route operated during the {season} season from {start_month} to {end_month}. In previous years, this route ran from {start_month} {start_year} to {end_month} {end_year}."
                 elif earliest_start > current_date:
-                    message = f"This route is scheduled to operate from {earliest_readable} to {latest_readable}."
+                    # For future routes
+                    message = f"This route is scheduled to operate from {earliest_readable} to {latest_readable}. Please check closer to the departure date for ticket availability."
                 else:
+                    # For current/seasonal routes
                     if start_month == end_month:
-                        message = f"This route typically operates during {start_month}."
+                        message = f"This route typically operates during {start_month}. In previous years, it was available in {start_month} {start_year}."
                     else:
-                        message = f"This route typically operates from {start_month} to {end_month}."
+                        message = f"This route typically operates during the {season} season from {start_month} to {end_month}. In previous years, this route ran from {start_month} {start_year} to {end_month} {end_year}."
                 
                 historical_info.append(message)
             
