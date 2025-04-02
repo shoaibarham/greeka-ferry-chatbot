@@ -65,9 +65,13 @@ class FerryAgent:
             description="Check if a route was available in historical data when it's not found in current schedules."
         )
 
-        # Define the prompt template for the agent
+        # Define the prompt template for the agent with enhanced instructions
+        system_prompt_content = get_system_prompt()
+        # Add special emphasis on checking historical data for routes
+        special_instruction = "\n\nCRITICAL INSTRUCTION: When a user asks about routes and no current routes are found, you MUST ALWAYS use the check_historical_routes tool before giving a negative response. Never skip this step!"
+        
         self.prompt = ChatPromptTemplate.from_messages([
-            SystemMessage(content=get_system_prompt()),
+            SystemMessage(content=system_prompt_content + special_instruction),
             MessagesPlaceholder(variable_name="chat_history"),
             ("human", "{input}"),
             MessagesPlaceholder(variable_name="agent_scratchpad")
