@@ -278,8 +278,15 @@ class FerryAgent:
         # Enable detailed logging for parameter inspection
         logger.info(f"check_historical_routes received: param1={param1}, param2={param2}")
         
-        # Case 1: First parameter is a dictionary (from tool invocation)
-        if isinstance(param1, dict):
+        # Case 1: Simple string parameters
+        if isinstance(param1, str) and isinstance(param2, str) and param2 is not None:
+            # This is the simplest case - two string parameters
+            origin_port = param1
+            destination_port = param2
+            logger.info(f"Using direct string parameters: origin={origin_port}, destination={destination_port}")
+            
+        # Case 2: Dictionary parameter
+        elif isinstance(param1, dict):
             logger.info(f"Processing dictionary input: {param1}")
             
             # Try to extract values based on common key patterns
@@ -314,66 +321,43 @@ class FerryAgent:
                     origin_port = inner_dict[inner_keys[0]]
                     destination_port = inner_dict[inner_keys[1]]
                     logger.info(f"Extracted from nested generic keys: origin={origin_port}, destination={destination_port}")
-            
-            # If all extraction attempts fail, log the dictionary structure
-            if origin_port is None or destination_port is None:
-                # Try harder with recursive extraction (go deeper in nested structures)
-                def extract_values(d, depth=0, max_depth=3):
-                    if depth > max_depth:
-                        return None, None
-                    
-                    # If this level has origin/destination keys, extract them
-                    if isinstance(d, dict):
-                        if 'origin_port' in d and 'destination_port' in d:
-                            return d['origin_port'], d['destination_port']
-                        elif 'origin' in d and 'destination' in d:
-                            return d['origin'], d['destination']
-                        
-                        # Try to recurse into nested dictionaries
-                        for k, v in d.items():
-                            if isinstance(v, dict):
-                                o, d = extract_values(v, depth + 1, max_depth)
-                                if o and d:
-                                    return o, d
-                    return None, None
-                
-                origin_port, destination_port = extract_values(param1)
-                if origin_port and destination_port:
-                    logger.info(f"Extracted from recursive search: origin={origin_port}, destination={destination_port}")
-                else:
-                    # Last ditch effort - see if we can get a string representation from the dict
-                    dict_str = str(param1)
-                    logger.error(f"Failed to extract ports from complex dictionary: {dict_str}")
         
-        # Case 2: First parameter is a string that looks like JSON
-        elif isinstance(param1, str) and (param1.startswith('{') and param1.endswith('}')):
-            logger.info(f"Processing potential JSON string: {param1}")
-            
-            try:
-                # Try to parse it as JSON
-                import json
-                json_dict = json.loads(param1)
-                logger.info(f"Successfully parsed JSON string to dictionary: {json_dict}")
+        # Case 3: String parameter that might be a dictionary representation
+        elif isinstance(param1, str):
+            # First, try treating it as a standard string parameter
+            if param2 is not None and isinstance(param2, str):
+                origin_port = param1
+                destination_port = param2
+                logger.info(f"Using string parameters: origin={origin_port}, destination={destination_port}")
+            # Next, check if it's a string representation of a dictionary
+            elif '{' in param1 and '}' in param1:
+                logger.info(f"Processing potential dictionary string: {param1}")
                 
-                # Extract values from the parsed dictionary
-                if 'origin_port' in json_dict and 'destination_port' in json_dict:
-                    origin_port = json_dict['origin_port']
-                    destination_port = json_dict['destination_port']
-                    logger.info(f"Extracted from JSON: origin={origin_port}, destination={destination_port}")
-                elif 'origin' in json_dict and 'destination' in json_dict:
-                    origin_port = json_dict['origin']
-                    destination_port = json_dict['destination']
-                    logger.info(f"Extracted from JSON with short keys: origin={origin_port}, destination={destination_port}")
-                elif len(json_dict) == 2:
-                    # If there are exactly two keys, use them as origin and destination
-                    keys = list(json_dict.keys())
-                    origin_port = json_dict[keys[0]]
-                    destination_port = json_dict[keys[1]]
-                    logger.info(f"Extracted from JSON with generic keys: origin={origin_port}, destination={destination_port}")
-            except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse as JSON: {str(e)}")
-            except Exception as e:
-                logger.error(f"Error processing JSON string: {str(e)}")
+                try:
+                    # Try to convert Python string repr to proper JSON format
+                    import json
+                    import re
+                    
+                    # Replace single quotes with double quotes for JSON parsing
+                    json_string = re.sub(r"'([^']*)':", r'"\1":', param1)
+                    json_string = re.sub(r":\s*'([^']*)'", r': "\1"', json_string)
+                    
+                    logger.info(f"Converted to JSON format: {json_string}")
+                    json_dict = json.loads(json_string)
+                    
+                    # Extract values from the parsed dictionary
+                    if 'origin_port' in json_dict and 'destination_port' in json_dict:
+                        origin_port = json_dict['origin_port']
+                        destination_port = json_dict['destination_port']
+                        logger.info(f"Extracted from converted JSON: origin={origin_port}, destination={destination_port}")
+                    elif 'origin' in json_dict and 'destination' in json_dict:
+                        origin_port = json_dict['origin']
+                        destination_port = json_dict['destination']
+                        logger.info(f"Extracted from converted JSON: origin={origin_port}, destination={destination_port}")
+                except json.JSONDecodeError as e:
+                    logger.error(f"Failed to parse as JSON: {str(e)}")
+                except Exception as e:
+                    logger.error(f"Error processing JSON string: {str(e)}")
                 
         # Case 3: First parameter is a string containing a key-value format (LangChain workaround)
         elif isinstance(param1, str) and param1.find(':') > 0:
