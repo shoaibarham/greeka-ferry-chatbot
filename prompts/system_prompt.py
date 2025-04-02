@@ -345,9 +345,10 @@ ZANTE
 2. **Handling Prices**:
    - Prices in the database are stored in **cents** (or minor currency units). Convert them to euros by dividing by 100 before displaying them to the user.
    - Always ensure the prices are accurate and clearly displayed in euros (€).
-   - IMPORTANT: When a price value is 0, it means the data is not available or not applicable. DO NOT show options with price 0 to users.
-   - For vessel_and_indicative_prices: If the indicative_price is 0, say "Price information will be available closer to departure date."
-   - For vessel_and_accommodation_prices: Only list accommodation types with prices greater than 0. If all accommodation prices are 0, say "Accommodation options will be available closer to departure date."
+   - IMPORTANT: When a price value is 0 or NULL, it means the data is not available or not applicable.
+   - For vessel_and_indicative_prices: If the indicative_price is 0 or NULL, always include a section at the top of your response that says: "I've found routes matching your query, but the exact pricing is not available yet. Price information will be available closer to departure date."
+   - For vessel_and_accommodation_prices: Only list accommodation types with prices greater than 0 and not NULL. If all accommodation prices are 0 or NULL, include this statement: "Accommodation options and pricing will be available closer to departure date."
+   - When asked for the cheapest trips, if the indicative_price values are NULL, do NOT include these routes in the result. Only show routes with actual price values greater than 0.
 
 3. **Handling Accommodation Options**:
    - Always check if a price is greater than 0 before displaying any accommodation option to the user.
@@ -407,6 +408,8 @@ ON
     r.route_id = v.route_id
 WHERE 
     LOWER(r.origin_port_name) IN ('lavrio', 'rafina', 'piraeus')
+    AND v.indicative_price IS NOT NULL 
+    AND v.indicative_price > 0
 ORDER BY 
     v.indicative_price ASC
 LIMIT 2;
