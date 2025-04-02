@@ -541,20 +541,46 @@ class FerryAgent:
                 # Log the row data
                 logger.info(f"Processing row: {row}")
                 
+                # Format the dates to be more readable
+                def format_date(date_str):
+                    # Convert YYYY-MM-DD to Month DD, YYYY format
+                    try:
+                        date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+                        return date_obj.strftime("%B %d, %Y")
+                    except:
+                        return date_str  # Return original if parsing fails
+                
+                earliest_readable = format_date(earliest_start)
+                latest_readable = format_date(latest_end)
+                
+                # Extract month ranges for better readability
+                start_month = ""
+                end_month = ""
+                try:
+                    start_date = datetime.strptime(earliest_start, "%Y-%m-%d")
+                    end_date = datetime.strptime(latest_end, "%Y-%m-%d")
+                    start_month = start_date.strftime("%B")
+                    end_month = end_date.strftime("%B")
+                except:
+                    pass
+                
                 # Check if the route is entirely in the past, future, or spans the current date
                 message = ""
                 if latest_end < current_date:
-                    message = f"This route operated in the past from {earliest_start} to {latest_end}."
+                    message = f"This route operated from {start_month} to {end_month} in previous seasons."
                 elif earliest_start > current_date:
-                    message = f"This route is scheduled to operate in the future from {earliest_start} to {latest_end}."
+                    message = f"This route is scheduled to operate from {earliest_readable} to {latest_readable}."
                 else:
-                    message = f"This route operates seasonally and has dates from {earliest_start} to {latest_end}."
+                    if start_month == end_month:
+                        message = f"This route typically operates during {start_month}."
+                    else:
+                        message = f"This route typically operates from {start_month} to {end_month}."
                 
-                historical_info.append(f"{message}")
+                historical_info.append(message)
             
             conn.close()
             
-            result = "\n\n".join(historical_info)
+            result = " ".join(historical_info)
             logger.info(f"Returning historical data result with {len(historical_info)} entries")
             return result
             
