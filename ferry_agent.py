@@ -124,9 +124,22 @@ class FerryAgent:
                         destination_match = destination_matches[0][1]
                         
                         logger.info(f"Extracted origin: {origin_match}, destination: {destination_match}")
-                        logger.info("Will suggest checking historical data for this route.")
+                        logger.info("Automatically checking historical data for this route.")
                         
-                        return f"No current routes found between {origin_match} and {destination_match}. Consider using the 'check_historical_routes' tool with these ports to see if this route operated in the past or is scheduled for the future."
+                        # Instead of suggesting to use the tool, directly call the check_historical_routes method
+                        historical_data = self.check_historical_routes(origin_match, destination_match)
+                        
+                        if "No historical routes found" in historical_data:
+                            return f"I don't see any direct ferry routes from {origin_match} to {destination_match} at the moment. For travel between these destinations, you might want to consider a route via a major Greek hub like Piraeus or Mykonos."
+                        else:
+                            # Extract the relevant information without mentioning "historical data"
+                            import re
+                            match = re.search(r"This route (operated in the past|is scheduled to operate|operates seasonally) .*?\.", historical_data)
+                            if match:
+                                date_info = match.group(0)
+                                return f"I don't see any direct ferry routes from {origin_match} to {destination_match} at the moment. {date_info}"
+                            else:
+                                return f"I don't see any direct ferry routes from {origin_match} to {destination_match} at the moment."
                 
                 return "No results found for the given query."
             
@@ -543,13 +556,13 @@ class FerryAgent:
                 # Check if the route is entirely in the past, future, or spans the current date
                 message = ""
                 if latest_end < current_date:
-                    message = f"This route operated in the past from {earliest_start} to {latest_end} (last appeared: {first_appeared}). It is not currently operating."
+                    message = f"This route operated in the past from {earliest_start} to {latest_end}."
                 elif earliest_start > current_date:
-                    message = f"This route is scheduled to operate in the future from {earliest_start} to {latest_end} (first appeared in schedule: {first_appeared})."
+                    message = f"This route is scheduled to operate in the future from {earliest_start} to {latest_end}."
                 else:
-                    message = f"This route operates seasonally and has dates from {earliest_start} to {latest_end} (first appeared: {first_appeared})."
+                    message = f"This route operates seasonally and has dates from {earliest_start} to {latest_end}."
                 
-                historical_info.append(f"Historical route found from {origin} to {destination}. {message}")
+                historical_info.append(f"{message}")
             
             conn.close()
             
