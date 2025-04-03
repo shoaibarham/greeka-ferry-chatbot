@@ -152,9 +152,11 @@
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h3>Recent GTFS Updates</h3>
-            <a href="{{ url_for('admin_gtfs.force_gmail_update') }}" class="btn btn-primary btn-sm" title="Directly fetch GTFS data from Gmail using credentials from environment variables. Bypasses scheduler settings.">
-                <i class="bi bi-envelope-check"></i> Force Gmail Update
-            </a>
+            <form action="{{ url_for('admin_gtfs.force_gmail_update') }}" method="post" style="display:inline;">
+                <button type="submit" class="btn btn-primary btn-sm" title="Directly fetch GTFS data from Gmail using credentials from environment variables. Bypasses scheduler settings.">
+                    <i class="bi bi-envelope-check"></i> Force Gmail Update
+                </button>
+            </form>
         </div>
         <div class="card-body">
             {% if updates %}

@@ -430,7 +430,7 @@ def delete_file(filename):
         logger.error(f"Error deleting file: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@admin_gtfs.route('/admin/gtfs/force_gmail_update', methods=['GET'])
+@admin_gtfs.route('/admin/gtfs/force_gmail_update', methods=['GET', 'POST'])
 @login_required
 def force_gmail_update():
     """
