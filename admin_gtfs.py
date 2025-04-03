@@ -524,5 +524,20 @@ def force_gmail_update():
         
     except Exception as e:
         logger.error(f"Error in force_gmail_update: {str(e)}")
+        
+        # Try direct update as a fallback
+        try:
+            logger.info("Email update failed. Trying direct update from downloaded files.")
+            
+            # Import and run the direct update script
+            from direct_update import main as direct_update
+            success = direct_update()
+            
+            if success:
+                flash('Update successful using previously downloaded GTFS file', 'success')
+                return redirect(url_for('admin_gtfs.gtfs_manager'))
+        except Exception as direct_error:
+            logger.error(f"Direct update also failed: {str(direct_error)}")
+        
         flash(f'Error during force update: {str(e)}', 'error')
         return redirect(url_for('admin_gtfs.gtfs_manager'))

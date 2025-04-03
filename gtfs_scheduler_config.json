@@ -4,8 +4,6 @@
         "15:00"
     ],
     "update_days": [
-        "monday",
-        "wednesday",
         "friday"
     ],
     "email_filter": {
