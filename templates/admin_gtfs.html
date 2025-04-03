@@ -87,13 +87,13 @@
 
     <div class="card mb-4">
         <div class="card-header">
-            <h3>Email Settings <span class="badge bg-info">Using Hardcoded Gmail</span></h3>
+            <h3>Email Settings <span class="badge bg-info">Using Environment Variables</span></h3>
         </div>
         <div class="card-body">
             <div class="alert alert-info mb-3">
                 <i class="bi bi-info-circle-fill me-2"></i>
-                <strong>Note:</strong> For reliability, the system is currently using hardcoded Gmail credentials. 
-                Any settings below are saved for UI consistency but the system will use its internal credentials for all operations.
+                <strong>Note:</strong> For reliability, the system is using Gmail credentials from environment variables (GTFS_EMAIL, GTFS_PASSWORD). 
+                Any settings below are saved for UI consistency but the system will use the environment variables for all operations.
                 Use the <strong>Force Gmail Update</strong> button above to manually fetch GTFS data using these credentials.
             </div>
             
@@ -115,7 +115,7 @@
                     <div class="mb-3">
                         <label for="email-password" class="form-label">Password (UI only)</label>
                         <input type="password" class="form-control" id="email-password">
-                        <div class="form-text">For display only - system uses Gmail App Password internally</div>
+                        <div class="form-text">For display only - system uses Gmail App Password from environment variables</div>
                     </div>
                 </div>
 
@@ -148,7 +148,7 @@
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h3>Recent GTFS Updates</h3>
-            <a href="{{ url_for('admin_gtfs.force_gmail_update') }}" class="btn btn-primary btn-sm" title="Directly fetch GTFS data from Gmail using hardcoded credentials. Bypasses environment variables and scheduler settings.">
+            <a href="{{ url_for('admin_gtfs.force_gmail_update') }}" class="btn btn-primary btn-sm" title="Directly fetch GTFS data from Gmail using credentials from environment variables. Bypasses scheduler settings.">
                 <i class="bi bi-envelope-check"></i> Force Gmail Update
             </a>
         </div>

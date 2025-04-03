@@ -45,9 +45,14 @@ class GTFSScheduler:
         
         # Initialize with hardcoded Gmail credentials 
         # This is a workaround for persistent environment variable issues
+        # Use environment variables for Gmail credentials
+        import os
+        gmail_email = os.environ.get("GTFS_EMAIL")
+        gmail_password = os.environ.get("GTFS_PASSWORD")
+        
         self.email_fetcher = EmailFetcher(
-            email_address="arhammuhammadshoaib@gmail.com",
-            password="peutrhospmfmftr",  # App Password with spaces removed
+            email_address=gmail_email,
+            password=gmail_password,
             imap_server="imap.gmail.com",
             imap_port=993
         )
@@ -183,10 +188,11 @@ class GTFSScheduler:
             bool: True if successful, False otherwise
         """
         try:
-            # Always use hardcoded Gmail credentials regardless of inputs
-            # This is a workaround for persistent environment variable issues
-            hardcoded_email = "arhammuhammadshoaib@gmail.com"
-            hardcoded_password = "peutrhospmfmftr"  # App Password with spaces removed
+            # Always use Gmail credentials from environment variables regardless of inputs
+            # This is a workaround for persistent authentication issues
+            import os
+            hardcoded_email = os.environ.get("GTFS_EMAIL")
+            hardcoded_password = os.environ.get("GTFS_PASSWORD")
             
             # Set credentials in the email fetcher
             self.email_fetcher.set_credentials(hardcoded_email, hardcoded_password)
@@ -218,10 +224,13 @@ class GTFSScheduler:
         try:
             logger.info("Starting GTFS data update check")
             
-            # For consistent operation, always override with Gmail credentials
+            # For consistent operation, always override with Gmail credentials from environment variables
+            import os
+            gmail_email = os.environ.get("GTFS_EMAIL")
+            gmail_password = os.environ.get("GTFS_PASSWORD")
             self.email_fetcher.set_credentials(
-                "arhammuhammadshoaib@gmail.com", 
-                "peutrhospmfmftr"  # App Password with spaces removed
+                gmail_email, 
+                gmail_password
             )
             
             # Connect to email
@@ -390,11 +399,14 @@ class GTFSScheduler:
         """
         logger.info("Running GTFS update now")
         
-        # HARDCODED OVERRIDE - Set Gmail credentials directly
-        # This is a workaround for persistent environment variable issues
+        # Use Gmail credentials from environment variables
+        # This is a reliable way to handle authentication
+        import os
+        gmail_email = os.environ.get("GTFS_EMAIL")
+        gmail_password = os.environ.get("GTFS_PASSWORD")
         self.email_fetcher.set_credentials(
-            "arhammuhammadshoaib@gmail.com", 
-            "peutrhospmfmftr"  # App Password with spaces removed
+            gmail_email, 
+            gmail_password
         )
         logger.info("Using Gmail credentials for manual update")
         

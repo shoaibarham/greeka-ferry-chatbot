@@ -147,7 +147,7 @@ def update_email_config():
     """
     Update email credentials for GTFS updates.
     While this accepts user-provided credentials for UI consistency,
-    the system will always use hardcoded Gmail credentials behind the scenes.
+    the system will always use Gmail credentials from environment variables.
     """
     if not current_user.is_admin:
         return jsonify({'success': False, 'error': 'Admin privileges required'}), 403
@@ -159,11 +159,12 @@ def update_email_config():
         use_env_vars = data.get('use_env_vars', 'true') == 'true'
         email = data.get('email')
         
-        # We ignore the real credentials and always use hardcoded Gmail credentials
-        hardcoded_email = "arhammuhammadshoaib@gmail.com"
-        hardcoded_password = "peutrhospmfmftr"  # App Password with spaces removed
+        # We ignore the real credentials and always use environment variables for Gmail credentials
+        import os
+        env_email = os.environ.get("GTFS_EMAIL")
+        env_password = os.environ.get("GTFS_PASSWORD")
         
-        # This will use the hardcoded credentials regardless of what's passed
+        # This will use the credentials from environment variables regardless of what's passed
         success = scheduler.configure_email_credentials(
             email=email,  # UI display only
             password=None,  # Not used due to hardcoding in the method
@@ -173,7 +174,7 @@ def update_email_config():
         if success:
             return jsonify({
                 'success': True, 
-                'message': 'Email configuration updated successfully (using hardcoded Gmail credentials for reliability)'
+                'message': 'Email configuration updated successfully (using Gmail credentials from environment variables for reliability)'
             })
         else:
             return jsonify({'success': False, 'error': 'Failed to update email configuration'})
@@ -187,49 +188,50 @@ def update_email_config():
 def test_email_connection():
     """
     Test connection to the email server.
-    Always uses hardcoded Gmail credentials for reliability.
+    Always uses Gmail credentials from environment variables for reliability.
     """
     if not current_user.is_admin:
         return jsonify({'success': False, 'error': 'Admin privileges required'}), 403
     
     try:
-        # HARDCODED GMAIL CREDENTIALS
-        # This is a critical workaround for persistent authentication issues
-        hardcoded_email = "arhammuhammadshoaib@gmail.com"
-        hardcoded_password = "peutrhospmfmftr"  # App Password with spaces removed
+        # Gmail credentials from environment variables
+        # Using environment variables for better security and flexibility
+        import os
+        env_email = os.environ.get("GTFS_EMAIL")
+        env_password = os.environ.get("GTFS_PASSWORD")
         
-        # Create a new fetcher with hardcoded credentials
+        # Create a new fetcher with credentials from environment variables
         fetcher = EmailFetcher(
-            email_address=hardcoded_email,
-            password=hardcoded_password,
+            email_address=env_email,
+            password=env_password,
             imap_server="imap.gmail.com",
             imap_port=993
         )
         
         # Log what we're doing for transparency
-        logger.info(f"Testing connection with hardcoded Gmail credentials: {hardcoded_email}")
+        logger.info(f"Testing connection with Gmail credentials from environment variables: {env_email}")
         
         # For UI consistency, we'll still receive any provided credentials,
         # but we won't actually use them for the connection test
         data = request.json
         ui_email = data.get('email') if data and data.get('use_provided') else None
         
-        # Test connection with hardcoded credentials
+        # Test connection with credentials from environment variables
         success = fetcher.connect()
         
         if success:
             fetcher.disconnect()
             
-            # Update the scheduler config, but still use hardcoded credentials behind the scenes
+            # Update the scheduler config, but still use credentials from environment variables behind the scenes
             scheduler.configure_email_credentials(
-                email=ui_email or hardcoded_email,  # For UI display only
-                password=hardcoded_password,  # Not actually used due to hardcoding in the method
+                email=ui_email or env_email,  # For UI display only
+                password=env_password,  # Not actually used due to using environment variables in the method
                 use_env_vars=False
             )
             
-            # Provide success message that acknowledges the hardcoded credential usage
-            message = f"Successfully connected to {hardcoded_email}"
-            if ui_email and ui_email != hardcoded_email:
+            # Provide success message that acknowledges the credential usage from environment variables
+            message = f"Successfully connected to {env_email}"
+            if ui_email and ui_email != env_email:
                 message += f" (Note: Using fixed Gmail credentials for reliable operation)"
                 
             return jsonify({'success': True, 'message': message})
@@ -256,7 +258,7 @@ def test_email_connection():
             
             return jsonify({
                 'success': False, 
-                'error': f'Failed to connect to Gmail server using {hardcoded_email}. Server may be temporarily unavailable.'
+                'error': f'Failed to connect to Gmail server using {env_email}. Server may be temporarily unavailable.'
             }), 400
             
     except Exception as e:
@@ -331,15 +333,16 @@ def upload_gtfs_file():
         
         # Process the file
         try:
-            # HARDCODED GMAIL CREDENTIALS
-            # This is a critical workaround for persistent authentication issues
-            hardcoded_email = "arhammuhammadshoaib@gmail.com"
-            hardcoded_password = "peutrhospmfmftr"  # App Password with spaces removed
+            # Gmail credentials from environment variables
+            # Using environment variables for better security and flexibility
+            import os
+            env_email = os.environ.get("GTFS_EMAIL")
+            env_password = os.environ.get("GTFS_PASSWORD")
             
-            # Check that it's valid GTFS JSON using a fetcher with hardcoded credentials
+            # Check that it's valid GTFS JSON using a fetcher with credentials from environment variables
             fetcher = EmailFetcher(
-                email_address=hardcoded_email,
-                password=hardcoded_password,
+                email_address=env_email,
+                password=env_password,
                 imap_server="imap.gmail.com",
                 imap_port=993
             )
@@ -421,7 +424,7 @@ def delete_file(filename):
 @login_required
 def force_gmail_update():
     """
-    Force a GTFS update using hardcoded Gmail credentials.
+    Force a GTFS update using Gmail credentials from environment variables.
     This is a direct, simplified route for testing email fetching.
     """
     if not current_user.is_admin:
@@ -429,19 +432,20 @@ def force_gmail_update():
         return redirect(url_for('index'))
     
     try:
-        # HARDCODED GMAIL CREDENTIALS
-        hardcoded_email = "arhammuhammadshoaib@gmail.com"
-        hardcoded_password = "peutrhospmfmftr"  # App Password with spaces removed
+        # Gmail credentials from environment variables
+        import os
+        env_email = os.environ.get("GTFS_EMAIL")
+        env_password = os.environ.get("GTFS_PASSWORD")
         
-        # Create a direct fetcher with hardcoded credentials
+        # Create a direct fetcher with credentials from environment variables
         fetcher = EmailFetcher(
-            email_address=hardcoded_email,
-            password=hardcoded_password,
+            email_address=env_email,
+            password=env_password,
             imap_server="imap.gmail.com",
             imap_port=993
         )
         
-        logger.info(f"Starting direct Gmail GTFS update with {hardcoded_email}")
+        logger.info(f"Starting direct Gmail GTFS update with {env_email}")
         
         # Connect to email
         if not fetcher.connect():
