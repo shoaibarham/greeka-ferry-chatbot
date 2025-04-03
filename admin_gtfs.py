@@ -45,7 +45,8 @@ def gtfs_manager():
         'update_directory': scheduler.update_directory,
         'enable_historical': scheduler.enable_historical,
         'next_update': scheduler.get_next_update_time(),
-        'is_running': scheduler.running
+        'is_running': scheduler.running,
+        'email_credentials': scheduler.config.get('email_credentials', {'use_env_vars': True})
     }
     
     # Get list of recent GTFS updates
