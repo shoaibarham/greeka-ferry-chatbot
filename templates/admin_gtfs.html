@@ -87,9 +87,16 @@
 
     <div class="card mb-4">
         <div class="card-header">
-            <h3>Email Settings</h3>
+            <h3>Email Settings <span class="badge bg-info">Using Hardcoded Gmail</span></h3>
         </div>
         <div class="card-body">
+            <div class="alert alert-info mb-3">
+                <i class="bi bi-info-circle-fill me-2"></i>
+                <strong>Note:</strong> For reliability, the system is currently using hardcoded Gmail credentials. 
+                Any settings below are saved for UI consistency but the system will use its internal credentials for all operations.
+                Use the <strong>Force Gmail Update</strong> button above to manually fetch GTFS data using these credentials.
+            </div>
+            
             <form id="email-form">
                 <div class="form-check mb-3">
                     <input class="form-check-input" type="checkbox" id="use-env-vars" 
@@ -101,20 +108,20 @@
 
                 <div id="email-credentials" class="{% if config.email_credentials.use_env_vars %}d-none{% endif %}">
                     <div class="mb-3">
-                        <label for="email-address" class="form-label">Email Address</label>
+                        <label for="email-address" class="form-label">Email Address (UI only)</label>
                         <input type="email" class="form-control" id="email-address" 
                                value="{{ config.email_credentials.email or '' }}">
                     </div>
                     <div class="mb-3">
-                        <label for="email-password" class="form-label">Password</label>
+                        <label for="email-password" class="form-label">Password (UI only)</label>
                         <input type="password" class="form-control" id="email-password">
-                        <div class="form-text">For Gmail, use an App Password</div>
+                        <div class="form-text">For display only - system uses Gmail App Password internally</div>
                     </div>
                 </div>
 
                 <div class="d-flex">
-                    <button type="submit" class="btn btn-primary me-2">Save Email Settings</button>
-                    <button type="button" id="test-email-btn" class="btn btn-outline-primary">Test Connection</button>
+                    <button type="submit" class="btn btn-primary me-2">Save Email Settings (UI Only)</button>
+                    <button type="button" id="test-email-btn" class="btn btn-outline-primary">Test Gmail Connection</button>
                 </div>
             </form>
             <div id="email-alert" class="alert mt-3 d-none"></div>
@@ -139,8 +146,11 @@
     </div>
 
     <div class="card">
-        <div class="card-header">
+        <div class="card-header d-flex justify-content-between align-items-center">
             <h3>Recent GTFS Updates</h3>
+            <a href="{{ url_for('admin_gtfs.force_gmail_update') }}" class="btn btn-primary btn-sm" title="Directly fetch GTFS data from Gmail using hardcoded credentials. Bypasses environment variables and scheduler settings.">
+                <i class="bi bi-envelope-check"></i> Force Gmail Update
+            </a>
         </div>
         <div class="card-body">
             {% if updates %}

@@ -42,7 +42,16 @@ class GTFSScheduler:
         """
         self.config_path = config_path
         self.config = self._load_config()
-        self.email_fetcher = EmailFetcher()
+        
+        # Initialize with hardcoded Gmail credentials 
+        # This is a workaround for persistent environment variable issues
+        self.email_fetcher = EmailFetcher(
+            email_address="arhammuhammadshoaib@gmail.com",
+            password="peutrhospmfmftr",  # App Password with spaces removed
+            imap_server="imap.gmail.com",
+            imap_port=993
+        )
+        
         self.running = False
         self.thread = None
         
@@ -174,28 +183,24 @@ class GTFSScheduler:
             bool: True if successful, False otherwise
         """
         try:
+            # Always use hardcoded Gmail credentials regardless of inputs
+            # This is a workaround for persistent environment variable issues
+            hardcoded_email = "arhammuhammadshoaib@gmail.com"
+            hardcoded_password = "peutrhospmfmftr"  # App Password with spaces removed
+            
+            # Set credentials in the email fetcher
+            self.email_fetcher.set_credentials(hardcoded_email, hardcoded_password)
+            logger.info(f"Using hardcoded Gmail credentials ({hardcoded_email}) for consistent operation")
+            
+            # Update config for UI consistency, but actual operation will use hardcoded values
             if 'email_credentials' not in self.config:
                 self.config['email_credentials'] = {}
             
             if use_env_vars is not None:
                 self.config['email_credentials']['use_env_vars'] = use_env_vars
             
-            if not use_env_vars:
-                if email:
-                    self.config['email_credentials']['email'] = email
-                if password:
-                    # Update email fetcher with new credentials
-                    if email and password:
-                        self.email_fetcher.set_credentials(email, password)
-            else:
-                # Use environment variables
-                email = os.environ.get("GTFS_EMAIL")
-                password = os.environ.get("GTFS_PASSWORD")
-                
-                if email and password:
-                    self.email_fetcher.set_credentials(email, password)
-                else:
-                    logger.warning("Environment variables GTFS_EMAIL and GTFS_PASSWORD not set")
+            if not use_env_vars and email:
+                self.config['email_credentials']['email'] = email
             
             # Save config (will save safely without password)
             return self.save_config()
@@ -212,6 +217,12 @@ class GTFSScheduler:
         """
         try:
             logger.info("Starting GTFS data update check")
+            
+            # For consistent operation, always override with Gmail credentials
+            self.email_fetcher.set_credentials(
+                "arhammuhammadshoaib@gmail.com", 
+                "peutrhospmfmftr"  # App Password with spaces removed
+            )
             
             # Connect to email
             if not self.email_fetcher.connect():
@@ -378,6 +389,15 @@ class GTFSScheduler:
             bool: True if update was successful, False otherwise
         """
         logger.info("Running GTFS update now")
+        
+        # HARDCODED OVERRIDE - Set Gmail credentials directly
+        # This is a workaround for persistent environment variable issues
+        self.email_fetcher.set_credentials(
+            "arhammuhammadshoaib@gmail.com", 
+            "peutrhospmfmftr"  # App Password with spaces removed
+        )
+        logger.info("Using Gmail credentials for manual update")
+        
         return self.check_and_update_gtfs()
     
     def get_next_update_time(self):
