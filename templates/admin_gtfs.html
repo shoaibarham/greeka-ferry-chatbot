@@ -232,29 +232,46 @@
 {% block scripts %}
 {{ super() }}
 <script>
+// Helper function to safely add event listeners
+function addSafeEventListener(elementId, event, handler) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.addEventListener(event, handler);
+        return true;
+    }
+    return false;
+}
+
+// Helper function to safely add event listeners to multiple elements
+function addSafeEventListenerToAll(selector, event, handler) {
+    const elements = document.querySelectorAll(selector);
+    if (elements && elements.length > 0) {
+        elements.forEach(function(element) {
+            if (element) {
+                element.addEventListener(event, handler);
+            }
+        });
+        return true;
+    }
+    return false;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     try {
+        console.log("DOM Content Loaded - initializing GTFS admin page");
+        
         // Scheduler control buttons
-        const startSchedulerBtn = document.getElementById('start-scheduler');
-        if (startSchedulerBtn) {
-            startSchedulerBtn.addEventListener('click', function() {
-                controlScheduler('start');
-            });
-        }
+        addSafeEventListener('start-scheduler', 'click', function() {
+            controlScheduler('start');
+        });
         
-        const stopSchedulerBtn = document.getElementById('stop-scheduler');
-        if (stopSchedulerBtn) {
-            stopSchedulerBtn.addEventListener('click', function() {
-                controlScheduler('stop');
-            });
-        }
+        addSafeEventListener('stop-scheduler', 'click', function() {
+            controlScheduler('stop');
+        });
         
-        const updateNowBtn = document.getElementById('update-now');
-        if (updateNowBtn) {
-            updateNowBtn.addEventListener('click', function() {
-                controlScheduler('update_now');
-            });
-        }
+        addSafeEventListener('update-now', 'click', function() {
+            controlScheduler('update_now');
+        });
         
         // Save configuration form
         const configForm = document.getElementById('config-form');
@@ -274,83 +291,51 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
         
-        // Test email connection
-        const testEmailBtn = document.getElementById('test-email-btn');
-        if (testEmailBtn) {
-            testEmailBtn.addEventListener('click', function() {
-                testEmailConnection();
-            });
-        }
+        // Test email connection - using our safe helper function
+        addSafeEventListener('test-email-btn', 'click', function() {
+            testEmailConnection();
+        });
         
         // Toggle email credentials visibility
-        const useEnvVarsCheckbox = document.getElementById('use-env-vars');
-        if (useEnvVarsCheckbox) {
-            useEnvVarsCheckbox.addEventListener('change', function() {
-                const emailCredentialsDiv = document.getElementById('email-credentials');
-                if (emailCredentialsDiv) {
-                    emailCredentialsDiv.classList.toggle('d-none', this.checked);
-                }
-            });
-        }
+        addSafeEventListener('use-env-vars', 'change', function() {
+            const emailCredentialsDiv = document.getElementById('email-credentials');
+            if (emailCredentialsDiv) {
+                emailCredentialsDiv.classList.toggle('d-none', this.checked);
+            }
+        });
         
-        // Initialize file-related elements if they exist
-        const viewFileButtons = document.querySelectorAll('.view-file');
-        if (viewFileButtons && viewFileButtons.length > 0) {
-            viewFileButtons.forEach(function(btn) {
-                if (btn) {
-                    btn.addEventListener('click', function() {
-                        const filename = this.getAttribute('data-filename');
-                        if (filename) {
-                            showFileInfo(filename);
-                        }
-                    });
-                }
-            });
-        }
+        // File-related buttons using our safe helper function
+        addSafeEventListenerToAll('.view-file', 'click', function() {
+            const filename = this.getAttribute('data-filename');
+            if (filename) {
+                showFileInfo(filename);
+            }
+        });
         
-        // Delete file buttons
-        const deleteFileButtons = document.querySelectorAll('.delete-file');
-        if (deleteFileButtons && deleteFileButtons.length > 0) {
-            deleteFileButtons.forEach(function(btn) {
-                if (btn) {
-                    btn.addEventListener('click', function() {
-                        const filename = this.getAttribute('data-filename');
-                        if (filename) {
-                            showDeleteConfirm(filename);
-                        }
-                    });
-                }
-            });
-        }
+        addSafeEventListenerToAll('.delete-file', 'click', function() {
+            const filename = this.getAttribute('data-filename');
+            if (filename) {
+                showDeleteConfirm(filename);
+            }
+        });
         
-        // Process file buttons
-        const processFileButtons = document.querySelectorAll('.process-file');
-        if (processFileButtons && processFileButtons.length > 0) {
-            processFileButtons.forEach(function(btn) {
-                if (btn) {
-                    btn.addEventListener('click', function() {
-                        const filename = this.getAttribute('data-filename');
-                        if (filename) {
-                            processFile(filename);
-                        }
-                    });
-                }
-            });
-        }
+        addSafeEventListenerToAll('.process-file', 'click', function() {
+            const filename = this.getAttribute('data-filename');
+            if (filename) {
+                processFile(filename);
+            }
+        });
         
         // Confirm delete button
-        const confirmDeleteBtn = document.getElementById('confirm-delete');
-        if (confirmDeleteBtn) {
-            confirmDeleteBtn.addEventListener('click', function() {
-                const deleteFilenameSpan = document.getElementById('delete-filename');
-                if (deleteFilenameSpan) {
-                    const filename = deleteFilenameSpan.textContent;
-                    if (filename) {
-                        deleteFile(filename);
-                    }
+        addSafeEventListener('confirm-delete', 'click', function() {
+            const deleteFilenameSpan = document.getElementById('delete-filename');
+            if (deleteFilenameSpan) {
+                const filename = deleteFilenameSpan.textContent;
+                if (filename) {
+                    deleteFile(filename);
                 }
-            });
-        }
+            }
+        });
         
         // Add event listener to upload form if it exists
         const uploadForm = document.getElementById('upload-form');
@@ -365,6 +350,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         }
+        
+        console.log("GTFS admin page initialized successfully");
     } catch (error) {
         console.error('Error initializing admin GTFS page:', error);
     }
