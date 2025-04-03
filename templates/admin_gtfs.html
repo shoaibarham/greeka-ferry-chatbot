@@ -233,99 +233,140 @@
 {{ super() }}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Scheduler control buttons
-    const startSchedulerBtn = document.getElementById('start-scheduler');
-    if (startSchedulerBtn) {
-        startSchedulerBtn.addEventListener('click', function() {
-            controlScheduler('start');
-        });
-    }
-    
-    const stopSchedulerBtn = document.getElementById('stop-scheduler');
-    if (stopSchedulerBtn) {
-        stopSchedulerBtn.addEventListener('click', function() {
-            controlScheduler('stop');
-        });
-    }
-    
-    const updateNowBtn = document.getElementById('update-now');
-    if (updateNowBtn) {
-        updateNowBtn.addEventListener('click', function() {
-            controlScheduler('update_now');
-        });
-    }
-    
-    // Save configuration form
-    const configForm = document.getElementById('config-form');
-    if (configForm) {
-        configForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            saveConfig();
-        });
-    }
-    
-    // Email settings form
-    const emailForm = document.getElementById('email-form');
-    if (emailForm) {
-        emailForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            saveEmailSettings();
-        });
-    }
-    
-    // Test email connection
-    const testEmailBtn = document.getElementById('test-email');
-    if (testEmailBtn) {
-        testEmailBtn.addEventListener('click', function() {
-            testEmailConnection();
-        });
-    }
-    
-    // Toggle email credentials visibility
-    const useEnvVarsCheckbox = document.getElementById('use-env-vars');
-    if (useEnvVarsCheckbox) {
-        useEnvVarsCheckbox.addEventListener('change', function() {
-            const emailCredentialsDiv = document.getElementById('email-credentials');
-            if (emailCredentialsDiv) {
-                emailCredentialsDiv.classList.toggle('d-none', this.checked);
-            }
-        });
-    }
-    
-    // File info buttons
-    document.querySelectorAll('.view-file').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            const filename = this.getAttribute('data-filename');
-            showFileInfo(filename);
-        });
-    });
-    
-    // Delete file buttons
-    document.querySelectorAll('.delete-file').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            const filename = this.getAttribute('data-filename');
-            showDeleteConfirm(filename);
-        });
-    });
-    
-    // Process file buttons
-    document.querySelectorAll('.process-file').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            const filename = this.getAttribute('data-filename');
-            processFile(filename);
-        });
-    });
-    
-    // Confirm delete button
-    const confirmDeleteBtn = document.getElementById('confirm-delete');
-    if (confirmDeleteBtn) {
-        confirmDeleteBtn.addEventListener('click', function() {
-            const deleteFilenameSpan = document.getElementById('delete-filename');
-            if (deleteFilenameSpan) {
-                const filename = deleteFilenameSpan.textContent;
-                deleteFile(filename);
-            }
-        });
+    try {
+        // Scheduler control buttons
+        const startSchedulerBtn = document.getElementById('start-scheduler');
+        if (startSchedulerBtn) {
+            startSchedulerBtn.addEventListener('click', function() {
+                controlScheduler('start');
+            });
+        }
+        
+        const stopSchedulerBtn = document.getElementById('stop-scheduler');
+        if (stopSchedulerBtn) {
+            stopSchedulerBtn.addEventListener('click', function() {
+                controlScheduler('stop');
+            });
+        }
+        
+        const updateNowBtn = document.getElementById('update-now');
+        if (updateNowBtn) {
+            updateNowBtn.addEventListener('click', function() {
+                controlScheduler('update_now');
+            });
+        }
+        
+        // Save configuration form
+        const configForm = document.getElementById('config-form');
+        if (configForm) {
+            configForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveConfig();
+            });
+        }
+        
+        // Email settings form
+        const emailForm = document.getElementById('email-form');
+        if (emailForm) {
+            emailForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                saveEmailSettings();
+            });
+        }
+        
+        // Test email connection
+        const testEmailBtn = document.getElementById('test-email');
+        if (testEmailBtn) {
+            testEmailBtn.addEventListener('click', function() {
+                testEmailConnection();
+            });
+        }
+        
+        // Toggle email credentials visibility
+        const useEnvVarsCheckbox = document.getElementById('use-env-vars');
+        if (useEnvVarsCheckbox) {
+            useEnvVarsCheckbox.addEventListener('change', function() {
+                const emailCredentialsDiv = document.getElementById('email-credentials');
+                if (emailCredentialsDiv) {
+                    emailCredentialsDiv.classList.toggle('d-none', this.checked);
+                }
+            });
+        }
+        
+        // Initialize file-related elements if they exist
+        const viewFileButtons = document.querySelectorAll('.view-file');
+        if (viewFileButtons && viewFileButtons.length > 0) {
+            viewFileButtons.forEach(function(btn) {
+                if (btn) {
+                    btn.addEventListener('click', function() {
+                        const filename = this.getAttribute('data-filename');
+                        if (filename) {
+                            showFileInfo(filename);
+                        }
+                    });
+                }
+            });
+        }
+        
+        // Delete file buttons
+        const deleteFileButtons = document.querySelectorAll('.delete-file');
+        if (deleteFileButtons && deleteFileButtons.length > 0) {
+            deleteFileButtons.forEach(function(btn) {
+                if (btn) {
+                    btn.addEventListener('click', function() {
+                        const filename = this.getAttribute('data-filename');
+                        if (filename) {
+                            showDeleteConfirm(filename);
+                        }
+                    });
+                }
+            });
+        }
+        
+        // Process file buttons
+        const processFileButtons = document.querySelectorAll('.process-file');
+        if (processFileButtons && processFileButtons.length > 0) {
+            processFileButtons.forEach(function(btn) {
+                if (btn) {
+                    btn.addEventListener('click', function() {
+                        const filename = this.getAttribute('data-filename');
+                        if (filename) {
+                            processFile(filename);
+                        }
+                    });
+                }
+            });
+        }
+        
+        // Confirm delete button
+        const confirmDeleteBtn = document.getElementById('confirm-delete');
+        if (confirmDeleteBtn) {
+            confirmDeleteBtn.addEventListener('click', function() {
+                const deleteFilenameSpan = document.getElementById('delete-filename');
+                if (deleteFilenameSpan) {
+                    const filename = deleteFilenameSpan.textContent;
+                    if (filename) {
+                        deleteFile(filename);
+                    }
+                }
+            });
+        }
+        
+        // Add event listener to upload form if it exists
+        const uploadForm = document.getElementById('upload-form');
+        if (uploadForm) {
+            uploadForm.addEventListener('submit', function(e) {
+                // Normal form submission, no need to prevent default
+                // Just disable the submit button to prevent double submission
+                const submitBtn = this.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Uploading...';
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Error initializing admin GTFS page:', error);
     }
 });
 

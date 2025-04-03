@@ -72,13 +72,44 @@ class EmailFetcher:
             return False
             
         try:
+            # Clean up any existing connection
+            if self.connection:
+                try:
+                    self.disconnect()
+                except:
+                    pass
+                self.connection = None
+                
+            # Create a new connection
+            logger.info(f"Connecting to {self.imap_server}:{self.imap_port} as {self.email_address}")
             self.connection = imaplib.IMAP4_SSL(self.imap_server, self.imap_port)
+            
+            # Attempt login
+            logger.info("Attempting login...")
             self.connection.login(self.email_address, self.password)
-            self.connection.select(self.folder)
+            
+            # Select mailbox
+            logger.info(f"Selecting folder: {self.folder}")
+            status, data = self.connection.select(self.folder)
+            
+            if status != 'OK':
+                logger.error(f"Failed to select folder {self.folder}: {data}")
+                return False
+                
             logger.info(f"Successfully connected to {self.imap_server} as {self.email_address}")
             return True
+            
+        except imaplib.IMAP4.error as e:
+            logger.error(f"IMAP error connecting to email server: {str(e)}")
+            self.connection = None
+            return False
+        except ConnectionRefusedError as e:
+            logger.error(f"Connection refused to {self.imap_server}: {str(e)}")
+            self.connection = None
+            return False
         except Exception as e:
             logger.error(f"Failed to connect to email server: {str(e)}")
+            self.connection = None
             return False
     
     def disconnect(self):
@@ -108,10 +139,14 @@ class EmailFetcher:
         Returns:
             list: List of email IDs matching the criteria
         """
+        # Ensure we have a connection
         if not self.connection:
+            logger.info("No active connection, attempting to connect")
             if not self.connect():
+                logger.error("Failed to establish connection")
                 return []
         
+        # Build search criteria
         search_criteria = []
         
         if unread_only:
@@ -130,11 +165,24 @@ class EmailFetcher:
         search_string = ' '.join(search_criteria) if search_criteria else 'ALL'
         
         try:
+            logger.info(f"Searching emails with criteria: {search_string}")
+            
+            # Execute search query
+            if self.connection is None:
+                logger.error("Connection is None, cannot search")
+                return []
+                
             result, data = self.connection.search(None, search_string)
+            
             if result != 'OK':
                 logger.error(f"Search failed with status: {result}")
                 return []
+            
+            if not data or not data[0]:
+                logger.info("No data returned from search")
+                return []
                 
+            # Process email IDs from search result
             email_ids = data[0].split()
             
             # Limit the number of results
@@ -143,6 +191,21 @@ class EmailFetcher:
                 
             logger.info(f"Found {len(email_ids)} emails matching criteria")
             return email_ids
+            
+        except imaplib.IMAP4.error as e:
+            logger.error(f"IMAP error during search: {str(e)}")
+            # Try to reconnect and search again
+            if self.connect():
+                try:
+                    result, data = self.connection.search(None, search_string)
+                    if result == 'OK' and data and data[0]:
+                        email_ids = data[0].split()
+                        if limit and len(email_ids) > limit:
+                            email_ids = email_ids[-limit:]
+                        return email_ids
+                except Exception:
+                    pass
+            return []
         except Exception as e:
             logger.error(f"Error searching emails: {str(e)}")
             return []
@@ -159,28 +222,55 @@ class EmailFetcher:
         Returns:
             list: List of paths to saved attachments
         """
+        # Ensure we have a connection
         if not self.connection:
+            logger.info("No active connection, attempting to connect")
             if not self.connect():
+                logger.error("Failed to establish connection")
                 return []
                 
+        # Set up save directory
         if not save_dir:
             save_dir = tempfile.gettempdir()
+        
+        # Ensure save directory exists
+        os.makedirs(save_dir, exist_ok=True)
             
         try:
+            logger.info(f"Fetching email with ID: {email_id}")
+            
+            # Check if connection is valid
+            if self.connection is None:
+                logger.error("Connection is None, cannot fetch email")
+                return []
+                
+            # Fetch the email
             result, data = self.connection.fetch(email_id, '(RFC822)')
+            
             if result != 'OK':
-                logger.error(f"Failed to fetch email {email_id}")
+                logger.error(f"Failed to fetch email {email_id}: {result}")
+                return []
+                
+            if not data or not data[0] or len(data[0]) < 2:
+                logger.error("Invalid data format returned from fetch")
                 return []
                 
             raw_email = data[0][1]
+            if not isinstance(raw_email, bytes):
+                logger.error(f"Raw email data is not bytes, but {type(raw_email)}")
+                raw_email = bytes(str(raw_email), 'utf-8')
+                
+            # Parse the email
             email_message = email.message_from_bytes(raw_email)
             
             # Get email subject for logging
-            subject = decode_email_header(email_message['Subject'])
-            sender = decode_email_header(email_message['From'])
+            subject = decode_email_header(email_message.get('Subject', 'No Subject'))
+            sender = decode_email_header(email_message.get('From', 'Unknown Sender'))
             logger.info(f"Processing email from {sender}: {subject}")
             
             saved_files = []
+            
+            # Process each part of the email
             for part in email_message.walk():
                 if part.get_content_maintype() == 'multipart':
                     continue
@@ -188,12 +278,20 @@ class EmailFetcher:
                 filename = part.get_filename()
                 if not filename:
                     continue
-                    
-                # Decode filename if needed
-                if decode_header(filename)[0][1]:
-                    filename = decode_header(filename)[0][0].decode(decode_header(filename)[0][1])
-                else:
-                    filename = decode_header(filename)[0][0]
+                
+                try:
+                    # Decode filename if needed
+                    decoded_header = decode_header(filename)[0]
+                    if decoded_header[1]:  # Has encoding info
+                        filename = decoded_header[0].decode(decoded_header[1])
+                    elif isinstance(decoded_header[0], bytes):
+                        filename = decoded_header[0].decode('utf-8', errors='replace')
+                    else:
+                        filename = decoded_header[0]
+                except Exception as e:
+                    logger.warning(f"Error decoding filename: {str(e)}")
+                    # Use a safe default if decoding fails
+                    filename = f"attachment_{datetime.now().strftime('%Y%m%d%H%M%S')}.json"
                 
                 # Check if it's a JSON file if json_only is True
                 if json_only and not filename.lower().endswith('.json'):
@@ -207,14 +305,50 @@ class EmailFetcher:
                 timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
                 save_path = os.path.join(save_dir, f"{timestamp}_{filename}")
                 
-                # Save the attachment
-                with open(save_path, 'wb') as f:
-                    f.write(part.get_payload(decode=True))
-                
-                logger.info(f"Saved attachment: {save_path}")
-                saved_files.append(save_path)
+                try:
+                    # Save the attachment
+                    payload = part.get_payload(decode=True)
+                    if payload:
+                        with open(save_path, 'wb') as f:
+                            f.write(payload)
+                        
+                        logger.info(f"Saved attachment: {save_path}")
+                        saved_files.append(save_path)
+                    else:
+                        logger.warning(f"Empty payload for attachment: {filename}")
+                except Exception as e:
+                    logger.error(f"Error saving attachment {filename}: {str(e)}")
                 
             return saved_files
+            
+        except imaplib.IMAP4.error as e:
+            logger.error(f"IMAP error fetching email {email_id}: {str(e)}")
+            # Try to reconnect and fetch again
+            if self.connect():
+                try:
+                    result, data = self.connection.fetch(email_id, '(RFC822)')
+                    if result == 'OK' and data and data[0]:
+                        # Process the email (simplified for retry)
+                        raw_email = data[0][1]
+                        if isinstance(raw_email, bytes):
+                            email_message = email.message_from_bytes(raw_email)
+                            saved_files = []
+                            for part in email_message.walk():
+                                if part.get_content_maintype() != 'multipart' and part.get_filename():
+                                    # Basic saving logic for retry
+                                    filename = re.sub(r'[^\w\.-]', '_', part.get_filename())
+                                    if json_only and not filename.lower().endswith('.json'):
+                                        continue
+                                    save_path = os.path.join(save_dir, f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}")
+                                    payload = part.get_payload(decode=True)
+                                    if payload:
+                                        with open(save_path, 'wb') as f:
+                                            f.write(payload)
+                                        saved_files.append(save_path)
+                            return saved_files
+                except Exception:
+                    pass
+            return []
         except Exception as e:
             logger.error(f"Error fetching attachments from email {email_id}: {str(e)}")
             return []
