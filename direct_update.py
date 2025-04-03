@@ -37,6 +37,25 @@ def validate_json_file(file_path):
         logger.error(f"Error validating file: {str(e)}")
         return False
 
+def update_using_file(file_path):
+    """
+    Update the database using a specific GTFS file.
+    
+    Args:
+        file_path: Path to the GTFS JSON file
+        
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    logger.info(f"Updating database with specified file: {file_path}")
+    try:
+        result = update_ferry_data(file_path=file_path)
+        logger.info(f"Update successful: {result}")
+        return True
+    except Exception as e:
+        logger.error(f"Error updating database: {str(e)}")
+        return False
+
 def main():
     """Update the database using the latest downloaded GTFS file."""
     # Path to the GTFS updates directory
@@ -72,14 +91,7 @@ def main():
     newest_file = valid_files[0][0]
     
     # Update the database
-    logger.info(f"Updating database with file: {newest_file}")
-    try:
-        result = update_ferry_data(file_path=newest_file)
-        logger.info(f"Update successful: {result}")
-        return True
-    except Exception as e:
-        logger.error(f"Error updating database: {str(e)}")
-        return False
+    return update_using_file(newest_file)
 
 if __name__ == "__main__":
     success = main()

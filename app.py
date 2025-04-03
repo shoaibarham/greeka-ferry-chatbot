@@ -301,29 +301,54 @@ def get_ports():
         logger.error(f"Error retrieving ports: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+def update_database_status():
+    """
+    Update and log database status after data changes.
+    Returns a dictionary with current database statistics.
+    """
+    try:
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_message = f"{now} - Database updated successfully"
+        
+        # Log the update
+        with open("data_updates.log", "a") as f:
+            f.write(log_message + "\n")
+        
+        # Return the current status
+        return _get_database_counts()
+    except Exception as e:
+        logger.error(f"Error updating database status: {str(e)}")
+        return None
+
+def _get_database_counts():
+    """Helper function to get database table counts."""
+    table_counts = {}
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # Get counts from each table
+    cursor.execute("SELECT COUNT(*) FROM routes")
+    table_counts["routes"] = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM dates_and_vessels")
+    table_counts["dates_and_vessels"] = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM vessels_and_indicative_prices")
+    table_counts["vessels_and_prices"] = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM vessels_and_accommodation_prices")
+    table_counts["accommodation_prices"] = cursor.fetchone()[0]
+    
+    conn.close()
+    
+    return table_counts
+
 @app.route("/api/database-status", methods=["GET"])
 def database_status():
     """Get the status of the database."""
     try:
         # Count entries in main database
-        table_counts = {}
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        
-        # Get counts from each table
-        cursor.execute("SELECT COUNT(*) FROM routes")
-        table_counts["routes"] = cursor.fetchone()[0]
-        
-        cursor.execute("SELECT COUNT(*) FROM dates_and_vessels")
-        table_counts["dates_and_vessels"] = cursor.fetchone()[0]
-        
-        cursor.execute("SELECT COUNT(*) FROM vessels_and_indicative_prices")
-        table_counts["vessels_and_prices"] = cursor.fetchone()[0]
-        
-        cursor.execute("SELECT COUNT(*) FROM vessels_and_accommodation_prices")
-        table_counts["accommodation_prices"] = cursor.fetchone()[0]
-        
-        conn.close()
+        table_counts = _get_database_counts()
         
         # Count entries in historical database
         historical_counts = {}

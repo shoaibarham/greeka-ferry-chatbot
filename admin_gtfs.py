@@ -448,24 +448,19 @@ def process_file(filename):
             logger.error(f"File not found: {file_path}")
             return jsonify({'success': False, 'error': 'File not found'}), 404
         
-        # Gmail credentials from environment variables
-        import os
-        env_email = os.environ.get("GTFS_EMAIL")
-        env_password = os.environ.get("GTFS_PASSWORD")
+        # Use direct_update module to process the file
+        from direct_update import validate_json_file
         
-        # Check that it's valid GTFS JSON using a fetcher with credentials from environment variables
-        fetcher = EmailFetcher(
-            email_address=env_email,
-            password=env_password,
-            imap_server="imap.gmail.com",
-            imap_port=993
-        )
-        
-        if fetcher.validate_gtfs_json(file_path):
+        if validate_json_file(file_path):
             # Process the file
             from data_processor import update_ferry_data
             result = update_ferry_data(file_path=file_path)
             logger.info(f"File processed successfully: {result}")
+            
+            # Update the database status information
+            from app import update_database_status
+            update_database_status()
+            
             return jsonify({'success': True, 'message': f'File processed successfully: {result}'})
         else:
             logger.warning(f"Invalid GTFS format: {filename}")
@@ -481,6 +476,10 @@ def process_file(filename):
             success = direct_update()
             
             if success:
+                # Update the database status information
+                from app import update_database_status
+                update_database_status()
+                
                 return jsonify({'success': True, 'message': 'Update successful using fallback method'})
             else:
                 return jsonify({'success': False, 'error': 'Both regular and fallback processing failed'}), 500
