@@ -174,7 +174,20 @@ def load_data(json_path='./attached_assets/GTFS_data_v5.json', db_path='gtfs.db'
 
         # Insert data into the database
         logger.info("Inserting data into the database...")
-        insert_data(cursor, data)
+        
+        # Handle both array format and object format with 'routes' key
+        if isinstance(data, list):
+            # It's already in the format we want (array of routes)
+            logger.info(f"Processing array format with {len(data)} routes")
+            insert_data(cursor, data)
+        elif isinstance(data, dict) and 'routes' in data:
+            # It's in object format with 'routes' key
+            logger.info(f"Processing object format with {len(data['routes'])} routes")
+            insert_data(cursor, data['routes'])
+        else:
+            logger.error("Invalid data format: expected array or object with 'routes' key")
+            conn.close()
+            raise ValueError("Invalid data format: expected array or object with 'routes' key")
 
         # Commit the changes and close the connection
         conn.commit()

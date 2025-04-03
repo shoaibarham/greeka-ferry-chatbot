@@ -422,7 +422,18 @@ class EmailFetcher:
             bool: True if valid, False otherwise
         """
         try:
-            with open(file_path, 'r') as f:
+            # Make sure the file exists
+            if not os.path.exists(file_path):
+                logger.error(f"File {file_path} does not exist")
+                return False
+                
+            # Check if file is empty
+            if os.path.getsize(file_path) == 0:
+                logger.error(f"File {file_path} is empty")
+                return False
+                
+            # Try to load the JSON
+            with open(file_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             
             # Support both array format and object format with routes key
@@ -444,16 +455,20 @@ class EmailFetcher:
             
             # Object format with routes key
             elif isinstance(data, dict) and 'routes' in data:
-                route_count = len(data['routes'])
+                route_count = len(data.get('routes', []))
+                if route_count == 0:
+                    logger.warning(f"File {file_path} contains an empty routes array")
+                    return False
+                    
                 logger.info(f"File {file_path} contains {route_count} routes in object format")
                 return True
             
             else:
-                logger.warning(f"File {file_path} does not contain valid GTFS data structure")
+                logger.warning(f"File {file_path} does not contain valid GTFS data structure: {type(data)}")
                 return False
                 
-        except json.JSONDecodeError:
-            logger.error(f"File {file_path} is not valid JSON")
+        except json.JSONDecodeError as e:
+            logger.error(f"File {file_path} is not valid JSON: {str(e)}")
             return False
         except Exception as e:
             logger.error(f"Error validating GTFS data: {str(e)}")
