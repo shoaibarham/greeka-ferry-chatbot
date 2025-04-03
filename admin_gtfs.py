@@ -198,22 +198,24 @@ def test_email_connection():
                 
             fetcher.set_credentials(email, password)
         else:
-            # Using environment variables - verify they exist
-            email = os.environ.get("GTFS_EMAIL")
-            if not email:
-                return jsonify({'success': False, 'error': 'GTFS_EMAIL environment variable not set. Please check your environment variables.'}), 400
-                
-            password = os.environ.get("GTFS_PASSWORD")
-            if not password:
-                return jsonify({'success': False, 'error': 'GTFS_PASSWORD environment variable not set. Please check your environment variables.'}), 400
-                
-            logger.info(f"Testing connection with environment credentials: {email}")
+            # Get Gmail settings from environment or use default
+            email = os.environ.get("GTFS_EMAIL", "arhammuhammadshoaib@gmail.com")
+            password = os.environ.get("GTFS_PASSWORD", "peutrhospmfmftr")  # Spaces removed
+            
+            # Override with Gmail credentials
+            fetcher.set_credentials(email, password)
+            logger.info(f"Testing connection with Gmail credentials: {email}")
         
         # Test connection
         success = fetcher.connect()
         
         if success:
             fetcher.disconnect()
+            # Update scheduler config with successful credentials
+            if not use_provided:
+                scheduler.configure_email_credentials(email=email, password=password, use_env_vars=False)
+                scheduler.save_config()
+                
             return jsonify({'success': True, 'message': 'Successfully connected to email server'})
         else:
             # Check logs for the last error message
