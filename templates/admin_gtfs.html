@@ -260,18 +260,24 @@ document.addEventListener('DOMContentLoaded', function() {
     try {
         console.log("DOM Content Loaded - initializing GTFS admin page");
         
-        // Scheduler control buttons
-        addSafeEventListener('start-scheduler', 'click', function() {
+        // Scheduler control buttons with error handling
+        if (!addSafeEventListener('start-scheduler', 'click', function() {
             controlScheduler('start');
-        });
+        })) {
+            console.log("Warning: start-scheduler button not found");
+        }
         
-        addSafeEventListener('stop-scheduler', 'click', function() {
+        if (!addSafeEventListener('stop-scheduler', 'click', function() {
             controlScheduler('stop');
-        });
+        })) {
+            console.log("Warning: stop-scheduler button not found");
+        }
         
-        addSafeEventListener('update-now', 'click', function() {
+        if (!addSafeEventListener('update-now', 'click', function() {
             controlScheduler('update_now');
-        });
+        })) {
+            console.log("Warning: update-now button not found");
+        }
         
         // Save configuration form
         const configForm = document.getElementById('config-form');
@@ -292,17 +298,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Test email connection - using our safe helper function
-        addSafeEventListener('test-email-btn', 'click', function() {
+        if (!addSafeEventListener('test-email-btn', 'click', function() {
             testEmailConnection();
-        });
+        })) {
+            console.log("Warning: test-email-btn element not found");
+        }
         
         // Toggle email credentials visibility
-        addSafeEventListener('use-env-vars', 'change', function() {
+        if (!addSafeEventListener('use-env-vars', 'change', function() {
             const emailCredentialsDiv = document.getElementById('email-credentials');
             if (emailCredentialsDiv) {
                 emailCredentialsDiv.classList.toggle('d-none', this.checked);
             }
-        });
+        })) {
+            console.log("Warning: use-env-vars element not found");
+        }
         
         // File-related buttons using our safe helper function
         addSafeEventListenerToAll('.view-file', 'click', function() {

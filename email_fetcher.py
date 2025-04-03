@@ -67,8 +67,13 @@ class EmailFetcher:
         Returns:
             bool: True if connection successful, False otherwise
         """
+        # Re-fetch credentials from environment in case they were updated
         if not self.email_address or not self.password:
-            logger.error("Email credentials not provided.")
+            self.email_address = os.environ.get("GTFS_EMAIL")
+            self.password = os.environ.get("GTFS_PASSWORD")
+            
+        if not self.email_address or not self.password:
+            logger.error("Email credentials not provided or found in environment.")
             return False
             
         try:
@@ -84,7 +89,7 @@ class EmailFetcher:
             logger.info(f"Connecting to {self.imap_server}:{self.imap_port} as {self.email_address}")
             self.connection = imaplib.IMAP4_SSL(self.imap_server, self.imap_port)
             
-            # Attempt login
+            # Attempt login with credentials
             logger.info("Attempting login...")
             self.connection.login(self.email_address, self.password)
             
@@ -100,7 +105,15 @@ class EmailFetcher:
             return True
             
         except imaplib.IMAP4.error as e:
-            logger.error(f"IMAP error connecting to email server: {str(e)}")
+            error_msg = str(e)
+            if "AUTHENTICATIONFAILED" in error_msg:
+                logger.error(f"Authentication failed for {self.email_address}. Check your email address and password or app password.")
+                # Check if using Gmail and provide app password hint
+                if "@gmail.com" in self.email_address:
+                    logger.error("If using Gmail, make sure to use an App Password, not your regular password.")
+                    logger.error("Generate an App Password at: https://myaccount.google.com/apppasswords")
+            else:
+                logger.error(f"IMAP error connecting to email server: {error_msg}")
             self.connection = None
             return False
         except ConnectionRefusedError as e:

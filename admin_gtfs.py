@@ -197,6 +197,17 @@ def test_email_connection():
                 return jsonify({'success': False, 'error': 'Email and password required'}), 400
                 
             fetcher.set_credentials(email, password)
+        else:
+            # Using environment variables - verify they exist
+            email = os.environ.get("GTFS_EMAIL")
+            if not email:
+                return jsonify({'success': False, 'error': 'GTFS_EMAIL environment variable not set. Please check your environment variables.'}), 400
+                
+            password = os.environ.get("GTFS_PASSWORD")
+            if not password:
+                return jsonify({'success': False, 'error': 'GTFS_PASSWORD environment variable not set. Please check your environment variables.'}), 400
+                
+            logger.info(f"Testing connection with environment credentials: {email}")
         
         # Test connection
         success = fetcher.connect()
@@ -205,11 +216,31 @@ def test_email_connection():
             fetcher.disconnect()
             return jsonify({'success': True, 'message': 'Successfully connected to email server'})
         else:
-            return jsonify({'success': False, 'error': 'Failed to connect to email server'})
+            # Check logs for the last error message
+            import re
+            try:
+                with open('email_updates.log', 'r') as log_file:
+                    # Get the last 10 lines
+                    lines = log_file.readlines()[-10:]
+                    error_lines = [line for line in lines if 'ERROR' in line]
+                    if error_lines:
+                        last_error = error_lines[-1]
+                        # Extract the error message
+                        match = re.search(r'ERROR - (.*)', last_error)
+                        if match:
+                            error_msg = match.group(1)
+                            return jsonify({
+                                'success': False, 
+                                'error': f'Failed to connect to email server: {error_msg}'
+                            }), 400
+            except Exception as log_error:
+                logger.error(f"Error reading log file: {str(log_error)}")
+            
+            return jsonify({'success': False, 'error': 'Failed to connect to email server. Check credentials and server settings.'}), 400
             
     except Exception as e:
         logger.error(f"Error testing email connection: {str(e)}")
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'success': False, 'error': f'Error: {str(e)}'}), 500
 
 @admin_gtfs.route('/admin/gtfs/scheduler', methods=['POST'])
 @login_required
