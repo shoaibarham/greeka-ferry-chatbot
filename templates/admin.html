@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ferry Data Admin - Greek Ferry Chatbot</title>
+    <title>{% block title %}Ferry Data Admin - Greek Ferry Chatbot{% endblock %}</title>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
@@ -16,6 +16,8 @@
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    {% block head_extra %}{% endblock %}
 </head>
 <body>
     <div class="container mt-4 mb-4">
@@ -32,13 +34,30 @@
                     </div>
                     <div class="card-body">
                         <div class="alert alert-info">
-                            <i class="fas fa-info-circle me-2"></i> This admin panel shows the current status of the ferry database and allows you to trigger data updates.
+                            <i class="fas fa-info-circle me-2"></i> This admin panel shows the current status of the ferry database and allows you to manage data updates.
+                        </div>
+                        
+                        <!-- Admin Navigation -->
+                        <div class="mt-3">
+                            <ul class="nav nav-pills">
+                                <li class="nav-item">
+                                    <a class="nav-link {% if active_page == 'dashboard' %}active{% endif %}" href="{{ url_for('admin') }}">
+                                        <i class="fas fa-tachometer-alt me-2"></i> Dashboard
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link {% if active_page == 'gtfs' %}active{% endif %}" href="{{ url_for('admin_gtfs.gtfs_manager') }}">
+                                        <i class="fas fa-calendar-alt me-2"></i> GTFS Manager
+                                    </a>
+                                </li>
+                            </ul>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         
+        {% block content %}
         <div class="row">
             <div class="col-md-6">
                 <div class="card mb-4">
@@ -149,6 +168,7 @@
                 </div>
             </div>
         </div>
+        {% endblock %}
     </div>
     
     <!-- JavaScript -->
@@ -388,5 +408,7 @@
             }
         });
     </script>
+    
+    {% block scripts %}{% endblock %}
 </body>
 </html>

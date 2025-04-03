@@ -9,6 +9,7 @@ import time
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
 from forms import LoginForm
+from admin_gtfs import admin_gtfs
 
 # Initialize logging
 logging.basicConfig(level=logging.DEBUG)
@@ -31,6 +32,9 @@ login_manager.login_message = "Please log in to access this page."
 login_manager.login_message_category = "warning"
 # Force login for protected views
 login_manager.session_protection = "strong"
+
+# Register blueprints
+app.register_blueprint(admin_gtfs)
 
 # Import models (after initializing db to avoid circular imports)
 from models import User
@@ -181,7 +185,7 @@ def admin():
         flash('You do not have permission to access the admin panel', 'danger')
         return redirect(url_for('index'))
     
-    return render_template("admin.html")
+    return render_template("admin.html", active_page="dashboard")
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
@@ -367,22 +371,19 @@ def database_status():
         }), 500
 
 def run_scheduled_update():
-    """Run scheduled updates for ferry data."""
-    while True:
-        try:
-            # Run update at 3 AM
-            current_hour = datetime.now().hour
-            if current_hour == 3:
-                logger.info("Running scheduled ferry data update")
-                subprocess.run(["python", "data_updater.py"], check=True)
-                # Sleep for 1 hour after running to avoid multiple executions
-                time.sleep(3600)
-            else:
-                # Check every 15 minutes
-                time.sleep(900)
-        except Exception as e:
-            logger.error(f"Error in scheduled update: {str(e)}")
-            time.sleep(900)  # Sleep for 15 minutes on error
+    """Run scheduled updates for ferry data using the GTFS Scheduler."""
+    from gtfs_scheduler import GTFSScheduler
+    
+    try:
+        # Initialize the GTFS scheduler
+        scheduler = GTFSScheduler()
+        
+        # Start the scheduler
+        scheduler.start()
+        
+        logger.info("GTFS Scheduler started successfully")
+    except Exception as e:
+        logger.error(f"Error starting GTFS scheduler: {str(e)}")
 
 # Start update scheduler thread
 update_thread = threading.Thread(target=run_scheduled_update, daemon=True)
