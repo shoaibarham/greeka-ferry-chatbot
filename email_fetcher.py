@@ -76,6 +76,11 @@ class EmailFetcher:
             logger.error("Email credentials not provided or found in environment.")
             return False
             
+        # For Gmail App Passwords, remove any spaces
+        if "@gmail.com" in self.email_address.lower() and self.password:
+            self.password = self.password.replace(" ", "")
+            logger.info("Gmail detected - formatted App Password for use")
+            
         try:
             # Clean up any existing connection
             if self.connection:
@@ -109,9 +114,10 @@ class EmailFetcher:
             if "AUTHENTICATIONFAILED" in error_msg:
                 logger.error(f"Authentication failed for {self.email_address}. Check your email address and password or app password.")
                 # Check if using Gmail and provide app password hint
-                if "@gmail.com" in self.email_address:
+                if "@gmail.com" in self.email_address.lower():
                     logger.error("If using Gmail, make sure to use an App Password, not your regular password.")
                     logger.error("Generate an App Password at: https://myaccount.google.com/apppasswords")
+                    logger.error("App Passwords are 16 characters with no spaces")
             else:
                 logger.error(f"IMAP error connecting to email server: {error_msg}")
             self.connection = None
