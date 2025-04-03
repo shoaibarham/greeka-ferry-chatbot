@@ -43,9 +43,8 @@ class GTFSScheduler:
         self.config_path = config_path
         self.config = self._load_config()
         
-        # Initialize with hardcoded Gmail credentials 
-        # This is a workaround for persistent environment variable issues
-        # Use environment variables for Gmail credentials
+        # Initialize with Gmail credentials from environment variables
+        # Use environment variables for Gmail credentials for security
         import os
         gmail_email = os.environ.get("GTFS_EMAIL")
         gmail_password = os.environ.get("GTFS_PASSWORD")
@@ -61,11 +60,16 @@ class GTFSScheduler:
         self.thread = None
         
         # Configure the scheduler with defaults if not found in config
-        self.update_time = self.config.get('update_time', '03:00')  # 3 AM by default
+        # Support multiple update times per day
+        self.update_times = self.config.get('update_times', ['03:00'])  # List of update times, default 3 AM
         self.update_days = self.config.get('update_days', ['monday', 'wednesday', 'friday'])
         self.email_filter = self.config.get('email_filter', {'subject': 'GTFS', 'days_back': 7})
         self.update_directory = self.config.get('update_directory', './gtfs_updates')
         self.enable_historical = self.config.get('enable_historical', True)
+        
+        # For backwards compatibility
+        if 'update_time' in self.config and 'update_times' not in self.config:
+            self.update_times = [self.config.get('update_time')]
         
         # Ensure update directory exists
         os.makedirs(self.update_directory, exist_ok=True)
@@ -82,9 +86,9 @@ class GTFSScheduler:
                 with open(self.config_path, 'r') as f:
                     return json.load(f)
             else:
-                # Create default config
+                # Create default config with multiple update times
                 default_config = {
-                    'update_time': '03:00',  # 3 AM by default in Greek time
+                    'update_times': ['03:00', '15:00'],  # Default update times at 3 AM and 3 PM in Greek time
                     'update_days': ['monday', 'wednesday', 'friday'], 
                     'email_filter': {
                         'subject': 'GTFS',
@@ -157,8 +161,15 @@ class GTFSScheduler:
                     self.config[key] = value
             
             # Update instance variables if relevant
-            if 'update_time' in update_dict:
-                self.update_time = update_dict['update_time']
+            if 'update_times' in update_dict:
+                self.update_times = update_dict['update_times']
+            # For backwards compatibility
+            elif 'update_time' in update_dict:
+                # Convert single update_time to list of update_times
+                self.update_times = [update_dict['update_time']]
+                # Also update the config to use update_times
+                self.config['update_times'] = self.update_times
+                
             if 'update_days' in update_dict:
                 self.update_days = update_dict['update_days']
             if 'email_filter' in update_dict:
@@ -331,15 +342,17 @@ class GTFSScheduler:
     def _schedule_tasks(self):
         """
         Configure scheduled tasks.
+        Support multiple schedules per day.
         """
         # Clear existing schedules
         schedule.clear()
         
-        # Schedule updates for configured days at the specified time
+        # Schedule updates for each day and each time
         for day in self.update_days:
-            getattr(schedule.every(), day.lower()).at(self.update_time).do(self.check_and_update_gtfs)
+            for update_time in self.update_times:
+                getattr(schedule.every(), day.lower()).at(update_time).do(self.check_and_update_gtfs)
             
-        logger.info(f"Scheduled updates for {', '.join(self.update_days)} at {self.update_time} (Greek time)")
+        logger.info(f"Scheduled updates for {', '.join(self.update_days)} at times: {', '.join(self.update_times)} (Greek time)")
     
     def _run_scheduler(self):
         """

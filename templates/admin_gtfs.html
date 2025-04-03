@@ -32,9 +32,13 @@
             <form id="config-form">
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <label for="update-time" class="form-label">Update Time (Greek time)</label>
-                        <input type="time" class="form-control" id="update-time" value="{{ config.update_time }}">
-                        <div class="form-text">Time in 24-hour format (Greek timezone)</div>
+                        <label for="update-times" class="form-label">Update Times (Greek time)</label>
+                        <div class="input-group mb-2">
+                            <input type="text" class="form-control" id="update-times" 
+                                   value="{% if config.update_times %}{{ config.update_times|join(', ') }}{% elif config.update_time %}{{ config.update_time }}{% else %}03:00{% endif %}">
+                            <button class="btn btn-outline-secondary" type="button" id="add-time-btn">Add Time</button>
+                        </div>
+                        <div class="form-text">Comma-separated times in 24-hour format (e.g., "03:00, 15:00"). Greek timezone.</div>
                     </div>
                     <div class="col-md-6">
                         <label for="update-days" class="form-label">Update Days</label>
@@ -324,6 +328,28 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log("Warning: use-env-vars element not found");
         }
         
+        // Add Time button functionality
+        if (!addSafeEventListener('add-time-btn', 'click', function() {
+            const updateTimesElem = document.getElementById('update-times');
+            if (updateTimesElem) {
+                const currentTime = new Date();
+                const hours = String(currentTime.getHours()).padStart(2, '0');
+                const minutes = String(currentTime.getMinutes()).padStart(2, '0');
+                const newTime = `${hours}:${minutes}`;
+                
+                const currentValue = updateTimesElem.value.trim();
+                if (currentValue) {
+                    // Add to existing times
+                    updateTimesElem.value = currentValue + ', ' + newTime;
+                } else {
+                    // Set as first time
+                    updateTimesElem.value = newTime;
+                }
+            }
+        })) {
+            console.log("Warning: add-time-btn element not found");
+        }
+        
         // File-related buttons using our safe helper function
         addSafeEventListenerToAll('.view-file', 'click', function() {
             const filename = this.getAttribute('data-filename');
@@ -439,20 +465,31 @@ function saveConfig() {
     
     const selectedDays = Array.from(daysSelect.selectedOptions).map(option => option.value);
     
-    const updateTimeElem = document.getElementById('update-time');
+    const updateTimesElem = document.getElementById('update-times');
     const emailSubjectElem = document.getElementById('email-subject');
     const senderFilterElem = document.getElementById('sender-filter');
     const daysBackElem = document.getElementById('days-back');
     const enableHistoricalElem = document.getElementById('enable-historical');
     
-    if (!updateTimeElem || !emailSubjectElem || !senderFilterElem || 
+    if (!updateTimesElem || !emailSubjectElem || !senderFilterElem || 
         !daysBackElem || !enableHistoricalElem) {
         console.error('Missing form elements');
         return;
     }
     
+    // Parse multiple update times
+    const updateTimesStr = updateTimesElem.value.trim();
+    const updateTimes = updateTimesStr.split(',')
+        .map(time => time.trim())
+        .filter(time => time.match(/^\d{2}:\d{2}$/)); // Simple validation for HH:MM format
+    
+    if (updateTimes.length === 0) {
+        alert('Please enter at least one valid update time in HH:MM format');
+        return;
+    }
+    
     const configData = {
-        update_time: updateTimeElem.value,
+        update_times: updateTimes,
         update_days: selectedDays,
         email_subject: emailSubjectElem.value,
         sender_filter: senderFilterElem.value,

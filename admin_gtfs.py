@@ -39,7 +39,7 @@ def gtfs_manager():
     
     # Get scheduler configuration
     config = {
-        'update_time': scheduler.update_time,
+        'update_times': scheduler.update_times,
         'update_days': scheduler.update_days,
         'email_filter': scheduler.email_filter,
         'update_directory': scheduler.update_directory,
@@ -92,8 +92,17 @@ def update_gtfs_config():
         # Extract configuration updates
         config_updates = {}
         
-        if 'update_time' in data:
-            config_updates['update_time'] = data['update_time']
+        if 'update_times' in data:
+            # Handle multiple update times
+            update_times = data['update_times']
+            if isinstance(update_times, str):
+                # Split and strip if provided as comma-separated string
+                update_times = update_times.split(',')
+                update_times = [time.strip() for time in update_times]
+            config_updates['update_times'] = update_times
+        elif 'update_time' in data:
+            # For backwards compatibility, convert single time to list
+            config_updates['update_times'] = [data['update_time']]
             
         if 'update_days' in data:
             days = data['update_days']

@@ -1,22 +1,22 @@
 {
-    "update_time": "03:00",
-    "update_days": [
-        "monday",
-        "wednesday",
-        "friday"
-    ],
-    "email_filter": {
-        "subject": "GTFS",
-        "sender": null,
-        "days_back": 7
-    },
-    "update_directory": "./gtfs_updates",
-    "enable_historical": true,
-    "email_credentials": {
-        "use_env_vars": true,
-        "email": null,
-        "password": null,
-        "server": "imap.gmail.com",
-        "port": 993
-    }
+  "update_times": ["03:00", "15:00"],
+  "update_days": [
+    "monday",
+    "wednesday",
+    "friday"
+  ],
+  "email_filter": {
+    "subject": "GTFS",
+    "sender": null,
+    "days_back": 7
+  },
+  "update_directory": "./gtfs_updates",
+  "enable_historical": true,
+  "email_credentials": {
+    "use_env_vars": true,
+    "email": null,
+    "password": null,
+    "server": "imap.gmail.com",
+    "port": 993
+  }
 }
