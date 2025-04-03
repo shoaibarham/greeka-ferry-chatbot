@@ -22,12 +22,28 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+# Email server presets
+EMAIL_SERVERS = {
+    "gmail": {
+        "imap_server": "imap.gmail.com",
+        "imap_port": 993,
+        "env_email": "GTFS_EMAIL",
+        "env_password": "GTFS_PASSWORD"
+    },
+    "greeka": {
+        "imap_server": "webmail.greeka.com",
+        "imap_port": 993,
+        "env_email": "GREEKA_EMAIL",
+        "env_password": "GREEKA_PASSWORD"
+    }
+}
+
 class EmailFetcher:
     """
     Class to fetch GTFS data from email attachments.
     """
     def __init__(self, email_address=None, password=None, imap_server="imap.gmail.com", 
-                 imap_port=993, folder="INBOX"):
+                 imap_port=993, folder="INBOX", server_type="gmail"):
         """
         Initialize the EmailFetcher with email credentials.
         
@@ -37,11 +53,29 @@ class EmailFetcher:
             imap_server: IMAP server address (default: imap.gmail.com)
             imap_port: IMAP server port (default: 993)
             folder: Email folder to check (default: INBOX)
+            server_type: Type of server ("gmail" or "greeka")
         """
-        self.email_address = email_address or os.environ.get("GTFS_EMAIL")
-        self.password = password or os.environ.get("GTFS_PASSWORD")
-        self.imap_server = imap_server
-        self.imap_port = imap_port
+        self.server_type = server_type
+        
+        # Use environment variables if credentials not provided
+        if not email_address or not password:
+            if server_type in EMAIL_SERVERS:
+                server_config = EMAIL_SERVERS[server_type]
+                self.email_address = email_address or os.environ.get(server_config["env_email"])
+                self.password = password or os.environ.get(server_config["env_password"])
+                self.imap_server = server_config["imap_server"]
+                self.imap_port = server_config["imap_port"]
+            else:
+                self.email_address = email_address or os.environ.get("GTFS_EMAIL")
+                self.password = password or os.environ.get("GTFS_PASSWORD")
+                self.imap_server = imap_server
+                self.imap_port = imap_port
+        else:
+            self.email_address = email_address
+            self.password = password
+            self.imap_server = imap_server
+            self.imap_port = imap_port
+            
         self.folder = folder
         self.connection = None
         
@@ -69,11 +103,18 @@ class EmailFetcher:
         """
         # Re-fetch credentials from environment in case they were updated
         if not self.email_address or not self.password:
-            self.email_address = os.environ.get("GTFS_EMAIL")
-            self.password = os.environ.get("GTFS_PASSWORD")
+            if self.server_type in EMAIL_SERVERS:
+                server_config = EMAIL_SERVERS[self.server_type]
+                self.email_address = os.environ.get(server_config["env_email"])
+                self.password = os.environ.get(server_config["env_password"])
+                self.imap_server = server_config["imap_server"]
+                self.imap_port = server_config["imap_port"]
+            else:
+                self.email_address = os.environ.get("GTFS_EMAIL")
+                self.password = os.environ.get("GTFS_PASSWORD")
             
         if not self.email_address or not self.password:
-            logger.error("Email credentials not provided or found in environment.")
+            logger.error(f"Email credentials not provided or found in environment for {self.server_type} server.")
             return False
             
         # For Gmail App Passwords, remove any spaces

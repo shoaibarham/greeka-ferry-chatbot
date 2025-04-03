@@ -152,11 +152,18 @@
     <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h3>Recent GTFS Updates</h3>
-            <form action="{{ url_for('admin_gtfs.force_gmail_update') }}" method="post" style="display:inline;">
-                <button type="submit" class="btn btn-primary btn-sm" title="Directly fetch GTFS data from Gmail using credentials from environment variables. Bypasses scheduler settings.">
-                    <i class="bi bi-envelope-check"></i> Force Gmail Update
-                </button>
-            </form>
+            <div>
+                <form action="{{ url_for('admin_gtfs.force_gmail_update') }}" method="post" style="display:inline;">
+                    <button type="submit" class="btn btn-primary btn-sm" title="Directly fetch GTFS data from Gmail using credentials from environment variables. Bypasses scheduler settings.">
+                        <i class="bi bi-envelope-check"></i> Force Gmail Update
+                    </button>
+                </form>
+                <form action="{{ url_for('admin_gtfs.force_greeka_update') }}" method="post" style="display:inline; margin-left: 5px;">
+                    <button type="submit" class="btn btn-info btn-sm" title="Directly fetch GTFS data from Greeka webmail using credentials from environment variables. Bypasses scheduler settings.">
+                        <i class="bi bi-envelope-paper"></i> Force Greeka Update
+                    </button>
+                </form>
+            </div>
         </div>
         <div class="card-body">
             {% if updates %}

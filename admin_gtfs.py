@@ -487,6 +487,133 @@ def process_file(filename):
             logger.error(f"Direct update also failed: {str(direct_error)}", exc_info=True)
             return jsonify({'success': False, 'error': f'Error processing file: {str(e)}'}), 500
 
+@admin_gtfs.route('/admin/gtfs/force_greeka_update', methods=['POST'])
+@login_required
+def force_greeka_update():
+    """
+    Force a GTFS update using Greeka webmail credentials from environment variables.
+    This is a direct route for fetching from the Greeka webmail server.
+    """
+    logger.info("Starting force Greeka update route")
+    if not current_user.is_admin:
+        flash('Admin privileges required', 'error')
+        return redirect(url_for('index'))
+    
+    try:
+        # Greeka webmail credentials from environment variables
+        import os
+        env_email = os.environ.get("GREEKA_EMAIL")
+        env_password = os.environ.get("GREEKA_PASSWORD")
+        
+        if not env_email or not env_password:
+            flash('Greeka webmail credentials not found in environment variables', 'error')
+            return redirect(url_for('admin_gtfs.gtfs_manager'))
+        
+        # Create a fetcher with Greeka webmail credentials
+        fetcher = EmailFetcher(
+            server_type="greeka"  # This will use the preset Greeka server configuration
+        )
+        
+        logger.info(f"Starting direct Greeka webmail GTFS update with {env_email}")
+        
+        # Connect to email
+        if not fetcher.connect():
+            flash('Failed to connect to Greeka webmail server', 'error')
+            return redirect(url_for('admin_gtfs.gtfs_manager'))
+        
+        # Search for GTFS emails from the last 30 days
+        days_back = 30
+        # Use timedelta to properly subtract days
+        since_date = datetime.now().replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        since_date = since_date - timedelta(days=days_back)
+        
+        email_ids = fetcher.search_emails(
+            subject_filter="GTFS",
+            since_date=since_date
+        )
+        
+        if not email_ids:
+            fetcher.disconnect()
+            flash(f'No GTFS emails found in the last {days_back} days in Greeka webmail', 'warning')
+            return redirect(url_for('admin_gtfs.gtfs_manager'))
+        
+        # Fetch attachments
+        update_dir = scheduler.update_directory
+        all_attachments = []
+        
+        for email_id in email_ids:
+            attachments = fetcher.fetch_attachments(
+                email_id,
+                save_dir=update_dir
+            )
+            all_attachments.extend(attachments)
+        
+        # Disconnect
+        fetcher.disconnect()
+        
+        if not all_attachments:
+            flash('No GTFS attachments found in Greeka webmail emails', 'warning')
+            return redirect(url_for('admin_gtfs.gtfs_manager'))
+        
+        # Find the newest valid file
+        newest_file = None
+        newest_time = None
+        
+        for file_path in all_attachments:
+            if not fetcher.validate_gtfs_json(file_path):
+                continue
+            
+            file_time = os.path.getmtime(file_path)
+            if newest_time is None or file_time > newest_time:
+                newest_time = file_time
+                newest_file = file_path
+        
+        if not newest_file:
+            flash('No valid GTFS files found in Greeka webmail attachments', 'warning')
+            return redirect(url_for('admin_gtfs.gtfs_manager'))
+        
+        # Process the newest file
+        from data_processor import update_ferry_data
+        update_result = update_ferry_data(file_path=newest_file)
+        
+        # Update database status
+        from app import update_database_status
+        update_database_status()
+        
+        flash(f'Greeka webmail GTFS update successful: {update_result}', 'success')
+        return redirect(url_for('admin_gtfs.gtfs_manager'))
+        
+    except Exception as e:
+        logger.error(f"Error in force_greeka_update: {str(e)}", exc_info=True)
+        
+        # Try direct update as a fallback
+        try:
+            logger.info("Greeka webmail update failed. Trying direct update from downloaded files.")
+            
+            # Import and run the direct update script
+            from direct_update import main as direct_update
+            logger.info("Trying direct_update.main as fallback")
+            
+            success = direct_update()
+            logger.info(f"Direct update return value: {success}")
+            
+            if success:
+                # Update database status
+                from app import update_database_status
+                update_database_status()
+                
+                flash('Update successful using fallback method with previously downloaded GTFS file', 'success')
+                return redirect(url_for('admin_gtfs.gtfs_manager'))
+            else:
+                logger.warning("Direct update returned False")
+        except Exception as direct_error:
+            logger.error(f"Direct update also failed: {str(direct_error)}", exc_info=True)
+        
+        flash(f'Error during Greeka webmail update: {str(e)}', 'error')
+        return redirect(url_for('admin_gtfs.gtfs_manager'))
+
 @admin_gtfs.route('/admin/gtfs/force_gmail_update', methods=['GET', 'POST'])
 @login_required
 def force_gmail_update():
@@ -577,6 +704,10 @@ def force_gmail_update():
         from data_processor import update_ferry_data
         update_result = update_ferry_data(file_path=newest_file)
         
+        # Update database status
+        from app import update_database_status
+        update_database_status()
+        
         flash(f'Gmail GTFS update successful: {update_result}', 'success')
         return redirect(url_for('admin_gtfs.gtfs_manager'))
         
@@ -595,6 +726,10 @@ def force_gmail_update():
             logger.info(f"Direct update return value: {success}")
             
             if success:
+                # Update database status
+                from app import update_database_status
+                update_database_status()
+                
                 flash('Update successful using previously downloaded GTFS file', 'success')
                 return redirect(url_for('admin_gtfs.gtfs_manager'))
             else:
