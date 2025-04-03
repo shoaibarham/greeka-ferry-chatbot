@@ -114,7 +114,7 @@
 
                 <div class="d-flex">
                     <button type="submit" class="btn btn-primary me-2">Save Email Settings</button>
-                    <button type="button" id="test-email" class="btn btn-outline-primary">Test Connection</button>
+                    <button type="button" id="test-email-btn" class="btn btn-outline-primary">Test Connection</button>
                 </div>
             </form>
             <div id="email-alert" class="alert mt-3 d-none"></div>
@@ -275,7 +275,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Test email connection
-        const testEmailBtn = document.getElementById('test-email');
+        const testEmailBtn = document.getElementById('test-email-btn');
         if (testEmailBtn) {
             testEmailBtn.addEventListener('click', function() {
                 testEmailConnection();
