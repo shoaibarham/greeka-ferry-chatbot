@@ -425,16 +425,33 @@ class EmailFetcher:
             with open(file_path, 'r') as f:
                 data = json.load(f)
             
-            # Basic validation - check if the file contains routes data
-            if 'routes' not in data:
-                logger.warning(f"File {file_path} does not contain routes data")
+            # Support both array format and object format with routes key
+            if isinstance(data, list):
+                # Array format - ensure it's not empty and has route data
+                if not data:
+                    logger.warning(f"File {file_path} contains an empty array")
+                    return False
+                
+                # Check first item for required route fields
+                first_item = data[0]
+                required_fields = ['route_id', 'origin_port', 'destination_port']
+                if not all(field in first_item for field in required_fields):
+                    logger.warning(f"File {file_path} does not contain required route fields")
+                    return False
+                
+                logger.info(f"File {file_path} contains {len(data)} routes in array format")
+                return True
+            
+            # Object format with routes key
+            elif isinstance(data, dict) and 'routes' in data:
+                route_count = len(data['routes'])
+                logger.info(f"File {file_path} contains {route_count} routes in object format")
+                return True
+            
+            else:
+                logger.warning(f"File {file_path} does not contain valid GTFS data structure")
                 return False
                 
-            # Count the number of routes for logging
-            route_count = len(data['routes'])
-            logger.info(f"File {file_path} contains {route_count} routes")
-            
-            return True
         except json.JSONDecodeError:
             logger.error(f"File {file_path} is not valid JSON")
             return False
