@@ -260,7 +260,7 @@ class GTFSScheduler:
             since_date = datetime.now().replace(
                 hour=0, minute=0, second=0, microsecond=0
             )
-            since_date = since_date.replace(day=since_date.day - days_back)
+            since_date = since_date - timedelta(days=days_back)
             
             email_ids = self.email_fetcher.search_emails(
                 subject_filter=subject,

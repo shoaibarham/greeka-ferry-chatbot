@@ -8,7 +8,7 @@ import re
 import email
 import imaplib
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from email.header import decode_header
 import tempfile
 import json
@@ -172,7 +172,8 @@ class EmailFetcher:
             search_criteria.append('UNSEEN')
             
         if subject_filter:
-            search_criteria.append(f'SUBJECT "{subject_filter}"')
+            # Make the search case-insensitive to find emails with different capitalization
+            search_criteria.append(f'SUBJECT "{subject_filter.lower()}" OR SUBJECT "{subject_filter.upper()}" OR SUBJECT "{subject_filter}"')
             
         if sender_filter:
             search_criteria.append(f'FROM "{sender_filter}"')
@@ -387,7 +388,7 @@ class EmailFetcher:
         since_date = datetime.now().replace(
             hour=0, minute=0, second=0, microsecond=0
         )
-        since_date = since_date.replace(day=since_date.day - days)
+        since_date = since_date - timedelta(days=days)
         
         # Create save directory if it doesn't exist
         os.makedirs(save_dir, exist_ok=True)

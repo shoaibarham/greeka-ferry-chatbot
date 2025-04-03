@@ -5,7 +5,8 @@ Admin routes for GTFS data management and scheduling.
 import os
 import json
 import logging
-from datetime import datetime
+import re
+from datetime import datetime, timedelta
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
@@ -463,10 +464,11 @@ def force_gmail_update():
         
         # Search for GTFS emails from the last 30 days
         days_back = 30
+        # Use timedelta to properly subtract days
         since_date = datetime.now().replace(
             hour=0, minute=0, second=0, microsecond=0
         )
-        since_date = since_date.replace(day=since_date.day - days_back)
+        since_date = since_date - timedelta(days=days_back)
         
         email_ids = fetcher.search_emails(
             subject_filter="GTFS",
