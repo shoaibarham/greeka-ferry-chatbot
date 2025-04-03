@@ -437,6 +437,7 @@ def force_gmail_update():
     Force a GTFS update using Gmail credentials from environment variables.
     This is a direct, simplified route for testing email fetching.
     """
+    logger.info("Starting force Gmail update route")
     if not current_user.is_admin:
         flash('Admin privileges required', 'error')
         return redirect(url_for('index'))
@@ -523,7 +524,7 @@ def force_gmail_update():
         return redirect(url_for('admin_gtfs.gtfs_manager'))
         
     except Exception as e:
-        logger.error(f"Error in force_gmail_update: {str(e)}")
+        logger.error(f"Error in force_gmail_update: {str(e)}", exc_info=True)
         
         # Try direct update as a fallback
         try:
@@ -531,13 +532,18 @@ def force_gmail_update():
             
             # Import and run the direct update script
             from direct_update import main as direct_update
+            logger.info("Successfully imported direct_update.main")
+            
             success = direct_update()
+            logger.info(f"Direct update return value: {success}")
             
             if success:
                 flash('Update successful using previously downloaded GTFS file', 'success')
                 return redirect(url_for('admin_gtfs.gtfs_manager'))
+            else:
+                logger.warning("Direct update returned False")
         except Exception as direct_error:
-            logger.error(f"Direct update also failed: {str(direct_error)}")
+            logger.error(f"Direct update also failed: {str(direct_error)}", exc_info=True)
         
         flash(f'Error during force update: {str(e)}', 'error')
         return redirect(url_for('admin_gtfs.gtfs_manager'))
