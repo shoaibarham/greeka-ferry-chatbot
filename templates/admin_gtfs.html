@@ -764,10 +764,6 @@ function deleteFile(filename) {
 }
 
 function processFile(filename) {
-    // Create form data
-    const formData = new FormData();
-    formData.append('file', filename);
-    
     // Disable button
     const button = document.querySelector(`.process-file[data-filename="${filename}"]`);
     if (!button) {
@@ -778,13 +774,19 @@ function processFile(filename) {
     button.disabled = true;
     button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
     
-    // Use the upload endpoint as it already has processing logic
-    fetch('/admin/gtfs/upload', {
-        method: 'POST',
-        body: formData
+    // Use the dedicated process endpoint for existing files
+    fetch(`/admin/gtfs/process/${filename}`, {
+        method: 'POST'
     })
-    .then(response => {
-        // Reload page to show flash message
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message || 'File processed successfully');
+        } else {
+            alert('Error: ' + (data.error || 'Unknown error'));
+        }
+        
+        // Reload page to show updated status
         window.location.reload();
     })
     .catch(error => {

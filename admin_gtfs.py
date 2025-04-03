@@ -430,6 +430,64 @@ def delete_file(filename):
         logger.error(f"Error deleting file: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@admin_gtfs.route('/admin/gtfs/process/<path:filename>', methods=['POST'])
+@login_required
+def process_file(filename):
+    """
+    Process an existing GTFS file.
+    """
+    if not current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Admin privileges required'}), 403
+    
+    try:
+        # Secure the filename to prevent directory traversal
+        secure_name = secure_filename(filename)
+        file_path = os.path.join(scheduler.update_directory, secure_name)
+        
+        if not os.path.exists(file_path):
+            logger.error(f"File not found: {file_path}")
+            return jsonify({'success': False, 'error': 'File not found'}), 404
+        
+        # Gmail credentials from environment variables
+        import os
+        env_email = os.environ.get("GTFS_EMAIL")
+        env_password = os.environ.get("GTFS_PASSWORD")
+        
+        # Check that it's valid GTFS JSON using a fetcher with credentials from environment variables
+        fetcher = EmailFetcher(
+            email_address=env_email,
+            password=env_password,
+            imap_server="imap.gmail.com",
+            imap_port=993
+        )
+        
+        if fetcher.validate_gtfs_json(file_path):
+            # Process the file
+            from data_processor import update_ferry_data
+            result = update_ferry_data(file_path=file_path)
+            logger.info(f"File processed successfully: {result}")
+            return jsonify({'success': True, 'message': f'File processed successfully: {result}'})
+        else:
+            logger.warning(f"Invalid GTFS format: {filename}")
+            return jsonify({'success': False, 'error': 'Invalid GTFS format'}), 400
+            
+    except Exception as e:
+        logger.error(f"Error processing file: {str(e)}", exc_info=True)
+        
+        # Try direct update as a fallback
+        try:
+            logger.info("Regular processing failed. Trying direct update.")
+            from direct_update import main as direct_update
+            success = direct_update()
+            
+            if success:
+                return jsonify({'success': True, 'message': 'Update successful using fallback method'})
+            else:
+                return jsonify({'success': False, 'error': 'Both regular and fallback processing failed'}), 500
+        except Exception as direct_error:
+            logger.error(f"Direct update also failed: {str(direct_error)}", exc_info=True)
+            return jsonify({'success': False, 'error': f'Error processing file: {str(e)}'}), 500
+
 @admin_gtfs.route('/admin/gtfs/force_gmail_update', methods=['GET', 'POST'])
 @login_required
 def force_gmail_update():
