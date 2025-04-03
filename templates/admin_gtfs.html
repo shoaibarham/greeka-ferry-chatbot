@@ -234,39 +234,63 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Scheduler control buttons
-    document.getElementById('start-scheduler').addEventListener('click', function() {
-        controlScheduler('start');
-    });
+    const startSchedulerBtn = document.getElementById('start-scheduler');
+    if (startSchedulerBtn) {
+        startSchedulerBtn.addEventListener('click', function() {
+            controlScheduler('start');
+        });
+    }
     
-    document.getElementById('stop-scheduler').addEventListener('click', function() {
-        controlScheduler('stop');
-    });
+    const stopSchedulerBtn = document.getElementById('stop-scheduler');
+    if (stopSchedulerBtn) {
+        stopSchedulerBtn.addEventListener('click', function() {
+            controlScheduler('stop');
+        });
+    }
     
-    document.getElementById('update-now').addEventListener('click', function() {
-        controlScheduler('update_now');
-    });
+    const updateNowBtn = document.getElementById('update-now');
+    if (updateNowBtn) {
+        updateNowBtn.addEventListener('click', function() {
+            controlScheduler('update_now');
+        });
+    }
     
     // Save configuration form
-    document.getElementById('config-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        saveConfig();
-    });
+    const configForm = document.getElementById('config-form');
+    if (configForm) {
+        configForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveConfig();
+        });
+    }
     
     // Email settings form
-    document.getElementById('email-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        saveEmailSettings();
-    });
+    const emailForm = document.getElementById('email-form');
+    if (emailForm) {
+        emailForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            saveEmailSettings();
+        });
+    }
     
     // Test email connection
-    document.getElementById('test-email').addEventListener('click', function() {
-        testEmailConnection();
-    });
+    const testEmailBtn = document.getElementById('test-email');
+    if (testEmailBtn) {
+        testEmailBtn.addEventListener('click', function() {
+            testEmailConnection();
+        });
+    }
     
     // Toggle email credentials visibility
-    document.getElementById('use-env-vars').addEventListener('change', function() {
-        document.getElementById('email-credentials').classList.toggle('d-none', this.checked);
-    });
+    const useEnvVarsCheckbox = document.getElementById('use-env-vars');
+    if (useEnvVarsCheckbox) {
+        useEnvVarsCheckbox.addEventListener('change', function() {
+            const emailCredentialsDiv = document.getElementById('email-credentials');
+            if (emailCredentialsDiv) {
+                emailCredentialsDiv.classList.toggle('d-none', this.checked);
+            }
+        });
+    }
     
     // File info buttons
     document.querySelectorAll('.view-file').forEach(function(btn) {
@@ -293,10 +317,16 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Confirm delete button
-    document.getElementById('confirm-delete').addEventListener('click', function() {
-        const filename = document.getElementById('delete-filename').textContent;
-        deleteFile(filename);
-    });
+    const confirmDeleteBtn = document.getElementById('confirm-delete');
+    if (confirmDeleteBtn) {
+        confirmDeleteBtn.addEventListener('click', function() {
+            const deleteFilenameSpan = document.getElementById('delete-filename');
+            if (deleteFilenameSpan) {
+                const filename = deleteFilenameSpan.textContent;
+                deleteFile(filename);
+            }
+        });
+    }
 });
 
 function controlScheduler(action) {
@@ -310,43 +340,76 @@ function controlScheduler(action) {
     .then(response => response.json())
     .then(data => {
         const alertElem = document.getElementById('scheduler-alert');
-        alertElem.textContent = data.message;
-        alertElem.classList.remove('d-none', 'alert-success', 'alert-danger');
-        alertElem.classList.add(data.success ? 'alert-success' : 'alert-danger');
+        if (alertElem) {
+            alertElem.textContent = data.message;
+            alertElem.classList.remove('d-none', 'alert-success', 'alert-danger');
+            alertElem.classList.add(data.success ? 'alert-success' : 'alert-danger');
+            
+            // Hide alert after 5 seconds
+            setTimeout(() => {
+                alertElem.classList.add('d-none');
+            }, 5000);
+        }
         
-        // Update UI state
-        document.getElementById('scheduler-status').textContent = data.is_running ? 'Running' : 'Stopped';
-        document.getElementById('scheduler-status').className = data.is_running ? 'badge bg-success' : 'badge bg-secondary';
-        document.getElementById('start-scheduler').disabled = data.is_running;
-        document.getElementById('stop-scheduler').disabled = !data.is_running;
-        document.getElementById('next-update').textContent = data.next_update;
+        // Update UI state - add null checks
+        const schedulerStatus = document.getElementById('scheduler-status');
+        if (schedulerStatus) {
+            schedulerStatus.textContent = data.is_running ? 'Running' : 'Stopped';
+            schedulerStatus.className = data.is_running ? 'badge bg-success' : 'badge bg-secondary';
+        }
         
-        // Hide alert after 5 seconds
-        setTimeout(() => {
-            alertElem.classList.add('d-none');
-        }, 5000);
+        const startSchedulerBtn = document.getElementById('start-scheduler');
+        if (startSchedulerBtn) {
+            startSchedulerBtn.disabled = data.is_running;
+        }
+        
+        const stopSchedulerBtn = document.getElementById('stop-scheduler');
+        if (stopSchedulerBtn) {
+            stopSchedulerBtn.disabled = !data.is_running;
+        }
+        
+        const nextUpdateElem = document.getElementById('next-update');
+        if (nextUpdateElem) {
+            nextUpdateElem.textContent = data.next_update;
+        }
     })
     .catch(error => {
         console.error('Error:', error);
         const alertElem = document.getElementById('scheduler-alert');
-        alertElem.textContent = 'An error occurred: ' + error.message;
-        alertElem.classList.remove('d-none', 'alert-success');
-        alertElem.classList.add('alert-danger');
+        if (alertElem) {
+            alertElem.textContent = 'An error occurred: ' + error.message;
+            alertElem.classList.remove('d-none', 'alert-success');
+            alertElem.classList.add('alert-danger');
+        }
     });
 }
 
 function saveConfig() {
     // Get selected days
     const daysSelect = document.getElementById('update-days');
+    if (!daysSelect) return;
+    
     const selectedDays = Array.from(daysSelect.selectedOptions).map(option => option.value);
     
+    const updateTimeElem = document.getElementById('update-time');
+    const emailSubjectElem = document.getElementById('email-subject');
+    const senderFilterElem = document.getElementById('sender-filter');
+    const daysBackElem = document.getElementById('days-back');
+    const enableHistoricalElem = document.getElementById('enable-historical');
+    
+    if (!updateTimeElem || !emailSubjectElem || !senderFilterElem || 
+        !daysBackElem || !enableHistoricalElem) {
+        console.error('Missing form elements');
+        return;
+    }
+    
     const configData = {
-        update_time: document.getElementById('update-time').value,
+        update_time: updateTimeElem.value,
         update_days: selectedDays,
-        email_subject: document.getElementById('email-subject').value,
-        sender_filter: document.getElementById('sender-filter').value,
-        days_back: document.getElementById('days-back').value,
-        enable_historical: document.getElementById('enable-historical').checked.toString()
+        email_subject: emailSubjectElem.value,
+        sender_filter: senderFilterElem.value,
+        days_back: daysBackElem.value,
+        enable_historical: enableHistoricalElem.checked.toString()
     };
     
     fetch('/admin/gtfs/config', {
@@ -359,31 +422,48 @@ function saveConfig() {
     .then(response => response.json())
     .then(data => {
         const alertElem = document.getElementById('config-alert');
-        alertElem.textContent = data.message || data.error;
-        alertElem.classList.remove('d-none', 'alert-success', 'alert-danger');
-        alertElem.classList.add(data.success ? 'alert-success' : 'alert-danger');
-        
-        // Hide alert after 5 seconds
-        setTimeout(() => {
-            alertElem.classList.add('d-none');
-        }, 5000);
+        if (alertElem) {
+            alertElem.textContent = data.message || data.error;
+            alertElem.classList.remove('d-none', 'alert-success', 'alert-danger');
+            alertElem.classList.add(data.success ? 'alert-success' : 'alert-danger');
+            
+            // Hide alert after 5 seconds
+            setTimeout(() => {
+                alertElem.classList.add('d-none');
+            }, 5000);
+        }
     })
     .catch(error => {
         console.error('Error:', error);
         const alertElem = document.getElementById('config-alert');
-        alertElem.textContent = 'An error occurred: ' + error.message;
-        alertElem.classList.remove('d-none', 'alert-success');
-        alertElem.classList.add('alert-danger');
+        if (alertElem) {
+            alertElem.textContent = 'An error occurred: ' + error.message;
+            alertElem.classList.remove('d-none', 'alert-success');
+            alertElem.classList.add('alert-danger');
+        }
     });
 }
 
 function saveEmailSettings() {
-    const useEnvVars = document.getElementById('use-env-vars').checked;
+    const useEnvVarsElem = document.getElementById('use-env-vars');
+    if (!useEnvVarsElem) {
+        console.error('Missing use-env-vars element');
+        return;
+    }
+    const useEnvVars = useEnvVarsElem.checked;
+    
+    const emailAddressElem = document.getElementById('email-address');
+    const emailPasswordElem = document.getElementById('email-password');
+    
+    if (!emailAddressElem || !emailPasswordElem) {
+        console.error('Missing email form elements');
+        return;
+    }
     
     const emailData = {
         use_env_vars: useEnvVars.toString(),
-        email: document.getElementById('email-address').value,
-        password: document.getElementById('email-password').value
+        email: emailAddressElem.value,
+        password: emailPasswordElem.value
     };
     
     fetch('/admin/gtfs/email', {
@@ -396,31 +476,46 @@ function saveEmailSettings() {
     .then(response => response.json())
     .then(data => {
         const alertElem = document.getElementById('email-alert');
-        alertElem.textContent = data.message || data.error;
-        alertElem.classList.remove('d-none', 'alert-success', 'alert-danger');
-        alertElem.classList.add(data.success ? 'alert-success' : 'alert-danger');
-        
-        // Hide alert after 5 seconds
-        setTimeout(() => {
-            alertElem.classList.add('d-none');
-        }, 5000);
+        if (alertElem) {
+            alertElem.textContent = data.message || data.error;
+            alertElem.classList.remove('d-none', 'alert-success', 'alert-danger');
+            alertElem.classList.add(data.success ? 'alert-success' : 'alert-danger');
+            
+            // Hide alert after 5 seconds
+            setTimeout(() => {
+                alertElem.classList.add('d-none');
+            }, 5000);
+        }
         
         // Clear password field
-        document.getElementById('email-password').value = '';
+        if (emailPasswordElem) {
+            emailPasswordElem.value = '';
+        }
     })
     .catch(error => {
         console.error('Error:', error);
         const alertElem = document.getElementById('email-alert');
-        alertElem.textContent = 'An error occurred: ' + error.message;
-        alertElem.classList.remove('d-none', 'alert-success');
-        alertElem.classList.add('alert-danger');
+        if (alertElem) {
+            alertElem.textContent = 'An error occurred: ' + error.message;
+            alertElem.classList.remove('d-none', 'alert-success');
+            alertElem.classList.add('alert-danger');
+        }
     });
 }
 
 function testEmailConnection() {
-    const useEnvVars = document.getElementById('use-env-vars').checked;
-    const email = document.getElementById('email-address').value;
-    const password = document.getElementById('email-password').value;
+    const useEnvVarsElem = document.getElementById('use-env-vars');
+    const emailAddressElem = document.getElementById('email-address');
+    const emailPasswordElem = document.getElementById('email-password');
+    
+    if (!useEnvVarsElem || !emailAddressElem || !emailPasswordElem) {
+        console.error('Missing email form elements');
+        return;
+    }
+    
+    const useEnvVars = useEnvVarsElem.checked;
+    const email = emailAddressElem.value;
+    const password = emailPasswordElem.value;
     
     // Only use provided credentials if not using env vars and both fields are filled
     const useProvided = !useEnvVars && email && password;
@@ -441,71 +536,115 @@ function testEmailConnection() {
     .then(response => response.json())
     .then(data => {
         const alertElem = document.getElementById('email-alert');
-        alertElem.textContent = data.message || data.error;
-        alertElem.classList.remove('d-none', 'alert-success', 'alert-danger');
-        alertElem.classList.add(data.success ? 'alert-success' : 'alert-danger');
-        
-        // Hide alert after 5 seconds
-        setTimeout(() => {
-            alertElem.classList.add('d-none');
-        }, 5000);
+        if (alertElem) {
+            alertElem.textContent = data.message || data.error;
+            alertElem.classList.remove('d-none', 'alert-success', 'alert-danger');
+            alertElem.classList.add(data.success ? 'alert-success' : 'alert-danger');
+            
+            // Hide alert after 5 seconds
+            setTimeout(() => {
+                alertElem.classList.add('d-none');
+            }, 5000);
+        }
     })
     .catch(error => {
         console.error('Error:', error);
         const alertElem = document.getElementById('email-alert');
-        alertElem.textContent = 'An error occurred: ' + error.message;
-        alertElem.classList.remove('d-none', 'alert-success');
-        alertElem.classList.add('alert-danger');
+        if (alertElem) {
+            alertElem.textContent = 'An error occurred: ' + error.message;
+            alertElem.classList.remove('d-none', 'alert-success');
+            alertElem.classList.add('alert-danger');
+        }
     });
 }
 
 function showFileInfo(filename) {
     // Show modal
-    const modal = new bootstrap.Modal(document.getElementById('file-info-modal'));
+    const modalElem = document.getElementById('file-info-modal');
+    if (!modalElem) {
+        console.error('Missing file-info-modal element');
+        return;
+    }
+    
+    const modal = new bootstrap.Modal(modalElem);
     modal.show();
     
+    // Get elements
+    const contentElem = document.getElementById('file-info-content');
+    const loadingElem = document.getElementById('file-info-loading');
+    const errorElem = document.getElementById('file-info-error');
+    
+    if (!contentElem || !loadingElem || !errorElem) {
+        console.error('Missing modal elements');
+        return;
+    }
+    
     // Reset modal state
-    document.getElementById('file-info-content').classList.add('d-none');
-    document.getElementById('file-info-loading').classList.remove('d-none');
-    document.getElementById('file-info-error').classList.add('d-none');
+    contentElem.classList.add('d-none');
+    loadingElem.classList.remove('d-none');
+    errorElem.classList.add('d-none');
     
     // Fetch file info
     fetch(`/admin/gtfs/file/${filename}`)
     .then(response => response.json())
     .then(data => {
-        document.getElementById('file-info-loading').classList.add('d-none');
+        if (loadingElem) {
+            loadingElem.classList.add('d-none');
+        }
         
         if (data.success) {
-            // Update modal content
-            document.getElementById('info-filename').textContent = data.stats.filename;
-            document.getElementById('info-size').textContent = data.stats.size.toFixed(2);
-            document.getElementById('info-routes').textContent = data.stats.routes;
-            document.getElementById('info-vessels').textContent = data.stats.vessels;
-            document.getElementById('info-ports').textContent = data.stats.ports;
+            // Get content elements
+            const filenameElem = document.getElementById('info-filename');
+            const sizeElem = document.getElementById('info-size');
+            const routesElem = document.getElementById('info-routes');
+            const vesselsElem = document.getElementById('info-vessels');
+            const portsElem = document.getElementById('info-ports');
+            
+            // Update modal content if elements exist
+            if (filenameElem) filenameElem.textContent = data.stats.filename;
+            if (sizeElem) sizeElem.textContent = data.stats.size.toFixed(2);
+            if (routesElem) routesElem.textContent = data.stats.routes;
+            if (vesselsElem) vesselsElem.textContent = data.stats.vessels;
+            if (portsElem) portsElem.textContent = data.stats.ports;
             
             // Show content
-            document.getElementById('file-info-content').classList.remove('d-none');
+            if (contentElem) {
+                contentElem.classList.remove('d-none');
+            }
         } else {
             // Show error
-            const errorElem = document.getElementById('file-info-error');
-            errorElem.textContent = data.error || 'An error occurred';
-            errorElem.classList.remove('d-none');
+            if (errorElem) {
+                errorElem.textContent = data.error || 'An error occurred';
+                errorElem.classList.remove('d-none');
+            }
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        document.getElementById('file-info-loading').classList.add('d-none');
+        
+        if (loadingElem) {
+            loadingElem.classList.add('d-none');
+        }
         
         // Show error
-        const errorElem = document.getElementById('file-info-error');
-        errorElem.textContent = 'An error occurred: ' + error.message;
-        errorElem.classList.remove('d-none');
+        if (errorElem) {
+            errorElem.textContent = 'An error occurred: ' + error.message;
+            errorElem.classList.remove('d-none');
+        }
     });
 }
 
 function showDeleteConfirm(filename) {
-    document.getElementById('delete-filename').textContent = filename;
-    const modal = new bootstrap.Modal(document.getElementById('delete-confirm-modal'));
+    const deleteFilenameElem = document.getElementById('delete-filename');
+    const modalElem = document.getElementById('delete-confirm-modal');
+    
+    if (!deleteFilenameElem || !modalElem) {
+        console.error('Missing delete confirmation elements');
+        return;
+    }
+    
+    deleteFilenameElem.textContent = filename;
+    const modal = new bootstrap.Modal(modalElem);
     modal.show();
 }
 
@@ -516,8 +655,13 @@ function deleteFile(filename) {
     .then(response => response.json())
     .then(data => {
         // Close modal
-        const modal = bootstrap.Modal.getInstance(document.getElementById('delete-confirm-modal'));
-        modal.hide();
+        const modalElem = document.getElementById('delete-confirm-modal');
+        if (modalElem) {
+            const modal = bootstrap.Modal.getInstance(modalElem);
+            if (modal) {
+                modal.hide();
+            }
+        }
         
         if (data.success) {
             // Reload page to update file list
@@ -539,6 +683,11 @@ function processFile(filename) {
     
     // Disable button
     const button = document.querySelector(`.process-file[data-filename="${filename}"]`);
+    if (!button) {
+        console.error('Process button not found');
+        return;
+    }
+    
     button.disabled = true;
     button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
     
@@ -554,8 +703,12 @@ function processFile(filename) {
     .catch(error => {
         console.error('Error:', error);
         alert('An error occurred: ' + error.message);
-        button.disabled = false;
-        button.textContent = 'Process';
+        
+        // Re-enable button in case of error
+        if (button) {
+            button.disabled = false;
+            button.textContent = 'Process';
+        }
     });
 }
 </script>
